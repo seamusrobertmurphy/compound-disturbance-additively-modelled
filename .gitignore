@@ -1,0 +1,40 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Rprofile
+
+# Secrets: keep credentials out of git
+.Renviron
+.env
+
+.venv/
+__pycache__/
+
+_staging/
+_site/
+_backups/
+.claude/
+.claudeprism/
+tasks/
+
+CLAUDE.md
+SPEC.md
+DECISIONS.md
+
+.DS_Store
+._*
+*.tif
+*.zip
+
+/.quarto/
+.quarto/
+
+# Quarto render artefacts
+01.manuscript/*_files/
+01.manuscript/*.rmarkdown
+Rplots.pdf
+
+# The parent paper is the published version of record, copyright Elsevier, all
+# rights reserved. This repository is public, so it is kept locally only.
+04.references/grandfather-study/*.pdf

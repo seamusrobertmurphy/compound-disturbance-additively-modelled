@@ -1,0 +1,413 @@
+---
+title: "Compound disturbance, additively modelled"
+subtitle: "Testing whether beetle mortality and fire severity interact, in the landscape and in the model, Darkwoods Conservation Area, British Columbia"
+author:
+  - name: Seamus Murphy
+    orcid: 0000-0002-1792-0351
+    email: seamusrobertmurphy@gmail.com
+abstract: >
+  Provisional, and deliberately outcome-neutral until the interaction test has run. Compound
+  disturbance is routinely described as an interaction and routinely modelled as a sum. This study
+  separates the two claims over a mountain pine beetle outbreak and the mixed-severity wildfire that
+  followed it in the southern Selkirk Mountains of British Columbia, asking first whether the two
+  agents are associated on the ground and second whether their effects on conifer regeneration
+  multiply or merely add. The first result is negative and concerns the data rather than the forest.
+  The classified red-attack surface that the parent study used is masked to the classified
+  burn-severity footprint, so it reports beetle attack nowhere outside the burn. Read at face value
+  it implies that almost no beetle mortality occurred in the unburned forest surrounding the fire.
+  The provincial Aerial Overview Survey, an independent record that was never clipped to anything,
+  reports the opposite for the same ground. Any burned against unburned contrast drawn from the
+  masked surface therefore measures the mask. What survives the mask is the gradient within the
+  burn, where all severity classes sit inside the masked footprint and are equally exposed to it,
+  and there both the masked surface and the independent survey agree that attack peaks at moderate
+  severity rather than rising monotonically. Question A is accordingly reframed as a within-burn
+  question, and the interaction test on regeneration is unaffected.
+keywords:
+  - compound disturbance
+  - mountain pine beetle
+  - burn severity
+  - interaction terms
+  - data provenance
+  - analysis extent
+
+date: today
+format:
+  docx:
+    prefer-html: true
+    reference-doc: ../04.references/style-formal.docx
+    highlight-style: pygments
+  html:
+    page-layout: full
+    toc: true
+    number-sections: true
+    embed-resources: true
+    toc-title: "**Table of Contents**"
+    toc-location: right
+    toc-depth: 3
+    theme:
+      - ../04.references/style.scss
+      - cosmo
+    code-fold: false
+    code-tools: true
+    code-link: true
+    grid:
+      body-width: 1100px
+      margin-width: 220px
+
+execute:
+  eval: true
+  echo: true
+  warning: false
+  message: false
+  error: true
+  comment: NA
+
+always_allow_html: true
+engine: knitr
+citeproc: true
+editor: visual
+bibliography: ../04.references/references-compound.bib
+csl: ../04.references/apa.csl
+df-print: kable
+---
+
+```{r}
+#| label: setup
+#| echo: true
+#| output: false
+
+## Every quantity in this manuscript is computed here at render time. Nothing is
+## quoted from a prior session's notes.
+pkgs <- c("terra", "sf", "knitr", "kableExtra", "ggplot2", "dplyr", "tidyr",
+          "tibble", "tidyterra", "patchwork")
+invisible(lapply(pkgs, function(p) library(p, character.only = TRUE)))
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = TRUE,
+                      comment = NA, dpi = 300, fig.align = "center")
+options(scipen = 999)
+theme_set(theme_minimal(base_size = 10) +
+          theme(panel.grid.minor = element_blank(),
+                plot.title = element_text(face = "bold", size = 10)))
+
+OUTBREAK <- 2005:2014   # red-attack window preceding the 2015 fire
+FIRE_YR  <- 2015L
+
+## Every table in the document is also written to 03.outputs/TBL as CSV, from the
+## same object that renders, so the two cannot drift.
+TBL_DIR <- file.path("..", "03.outputs", "TBL")
+dir.create(TBL_DIR, showWarnings = FALSE, recursive = TRUE)
+keep <- function(x, slug) {
+  write.csv(x, file.path(TBL_DIR, paste0(slug, ".csv")), row.names = FALSE)
+  x
+}
+```
+
+```{r}
+#| label: paths
+#| echo: true
+
+DATA_ROOT <- Sys.getenv("DARKWOODS_DATA",
+  "/Users/seamus/repos/publications-pending/Darkwoods-Disturbance-Paper/3.SpatialData")
+dpath <- function(...) file.path(DATA_ROOT, ...)
+
+## The provincial survey is the independent check on the local classified layers.
+## It is bulk data shared with the companion refugia study rather than duplicated
+## here; see 02.inputs/aerial-survey/README.md.
+AOS_GDB <- Sys.getenv("DARKWOODS_AOS",
+  paste0("/Volumes/PortableSSD/Github/claude-science-library/publications-academic/",
+         "beetle-topography-and-wind-study/02.inputs/aos/pest_infestation_poly.gdb"))
+
+stopifnot(dir.exists(dpath("beetle_stages")), dir.exists(dpath("fire_severity")))
+HAVE_AOS <- dir.exists(AOS_GDB)
+stopifnot(HAVE_AOS)
+```
+
+# Introduction
+
+Mountain pine beetle outbreak and wildfire increasingly overlap in the conifer forests of western North America, and the overlap is usually described in the language of interaction. Whether the description is earned is a separate question from whether it is common. @talucci2019dead and @meigs2011 both frame the beetle to fire sequence as a modification of fuels and therefore of subsequent severity, and @krawchuk2020 place compound disturbance at the centre of the refugia concept. The claim that the agents interact is, in each case, a claim about a product rather than a sum.
+
+The parent study for this analysis [@murphy2026] modelled conifer regeneration across three four-hectare plots inside the 2015 Mt Midgeley burn, using classified Landsat surfaces for burn severity and for red-stage beetle mortality. Its abstract describes the additive effects of increasing beetle to fire disturbance interactions. Its model, however, enters red attack, grey attack and burn severity as additive main effects with no product term among them. The two statements are not the same statement, and the ambiguity was noticed at the time without being resolved.
+
+This study asks the two questions that separation implies.
+
+The first is whether prior beetle mortality is associated with subsequent burn severity in this landscape. The outbreak ran from 2005 to 2014 and the fire burned in 2015, so the causal arrow runs one way only, from beetle to fire, and never the reverse. The literature on the question is contested rather than empty, so what novelty there is rests on the particular landscape and on the treatment of confounding rather than on the question being new.
+
+The second is whether beetle and fire act additively on regeneration or interact. Here the test is direct: refit the published point process model with the beetle by fire product term and compare it against the published additive fit.
+
+The first question turned out to require a prior question, which is whether the surfaces that would answer it can answer it. Section @sec-provenance reports that check. It is negative, it is decisive, and it changes the shape of question one before any ecology is attempted.
+
+# Materials
+
+## Study area and disturbance history {#sec-area}
+
+The Darkwoods Conservation Area lies in the southern Selkirk Mountains of southeastern British Columbia. A mountain pine beetle outbreak affected the property through the decade to 2014, and the Mt Midgeley wildfire burned part of it in 2015, producing a mixed-severity mosaic. The beetle to fire interval across the burned area ranges from one to eleven years with a median of seven [@murphy2026].
+
+## Local classified surfaces {#sec-local}
+
+```{r}
+#| label: tbl-footprints
+#| echo: true
+#| tbl-cap: "Footprints of the local classified surfaces against the terrain grid. Every disturbance surface is confined to a rectangle of roughly eight square kilometres; the terrain grid covers thirty-four times that area."
+
+G   <- rast(dpath("terrain_environment", "Elevation.utm.tif"))
+red <- rast(dpath("beetle_stages", "Beetle.Outbreak.RedStage.tif"))
+sev <- rast(dpath("fire_severity",  "Fire.Severity.NDBR.tif"))
+per <- project(vect(dpath("fire_perimiter", "Fire.Perimiter.shp")), crs(G))
+
+footprint <- function(nm, r) {
+  e <- as.vector(ext(r))
+  tibble(Surface = nm,
+         Rows = nrow(r), Cols = ncol(r),
+         `Cell (m)` = round(res(r)[1], 2),
+         `Width (km)` = round((e[2] - e[1]) / 1000, 2),
+         `Height (km)` = round((e[4] - e[3]) / 1000, 2),
+         `Extent (km2)` = round((e[2] - e[1]) * (e[4] - e[3]) / 1e6, 2))
+}
+
+FOOT <- bind_rows(
+  footprint("Elevation, terrain grid", G),
+  footprint("Beetle red stage",        red),
+  footprint("Beetle grey stage",       rast(dpath("beetle_stages", "Beetle.Outbreak.GreyStage.tif"))),
+  footprint("Beetle continuous (spatstat)", rast(dpath("beetle_stages", "MPB.classified.spatstat.tif"))),
+  footprint("Burn severity, classified", sev),
+  footprint("Beetle by fire intersection", rast(dpath("beetle_fire_interactive", "mpbred_firehigh.tif"))))
+
+PERIM_KM2 <- as.numeric(sum(expanse(per, unit = "km")))
+RECT_KM2  <- FOOT$`Extent (km2)`[FOOT$Surface == "Beetle red stage"]
+GRID_KM2  <- FOOT$`Extent (km2)`[FOOT$Surface == "Elevation, terrain grid"]
+
+kable(keep(FOOT, "tbl-footprints"), align = "lrrrrrr") |> kable_styling(full_width = FALSE)
+```
+
+The fire perimeter encloses `r round(PERIM_KM2, 2)` km^2^. The beetle red-stage raster spans a rectangle of `r RECT_KM2` km^2^ around it, so the raster carries roughly `r round(RECT_KM2 - PERIM_KM2, 2)` km^2^ of ground outside the burn on which beetle attack could in principle have been mapped. The terrain grid covers `r round(GRID_KM2, 0)` km^2^ of the same landscape and shows what surrounds the burn.
+
+## The severity classes, decoded {#sec-decode}
+
+The classified severity raster carries integer codes that are not ordered by severity, and the ordering matters to every table that follows. It is established here from the three binary class masks rather than assumed.
+
+```{r}
+#| label: tbl-decode
+#| echo: true
+#| tbl-cap: "Decoding the classified burn severity raster against its own binary class masks, and against the fire perimeter. The integer codes are not in severity order. Code 16 falls inside the perimeter but in none of the three severity classes."
+
+P <- rasterize(per, sev, background = 0)
+
+DEC <- lapply(c(High = "High", Moderate = "Med", Low = "Low"), function(cl) {
+  m  <- rast(dpath("fire_severity", paste0("Fire.", cl, ".NDBR.tif")))
+  cd <- unique(values(sev)[, 1][values(m)[, 1] == 1])
+  tibble(Class = cl, Code = cd, Cells = sum(values(m)[, 1] == 1, na.rm = TRUE))
+}) |> bind_rows()
+DEC$Class <- c("High", "Moderate", "Low")
+
+## the two codes that no class mask claims
+unclaimed <- setdiff(na.omit(unique(values(sev)[, 1])), DEC$Code)
+UNC <- tibble(
+  Class = ifelse(sapply(unclaimed, function(k)
+            mean(values(P)[, 1][values(sev)[, 1] == k] == 1, na.rm = TRUE)) > 0.5,
+          "Inside perimeter, unclassified", "Outside perimeter"),
+  Code  = unclaimed,
+  Cells = sapply(unclaimed, function(k) sum(values(sev)[, 1] == k, na.rm = TRUE)))
+
+DECODE <- bind_rows(UNC, DEC) |>
+  mutate(`Inside perimeter (%)` = round(100 * sapply(Code, function(k)
+           mean(values(P)[, 1][values(sev)[, 1] == k] == 1, na.rm = TRUE)), 1)) |>
+  arrange(match(Class, c("Outside perimeter", "Inside perimeter, unclassified",
+                         "Low", "Moderate", "High")))
+
+## The mapping is load-bearing. Assert it rather than trusting the read.
+stopifnot(DEC$Code[DEC$Class == "High"] == 1,
+          DEC$Code[DEC$Class == "Low"] == 32,
+          DEC$Code[DEC$Class == "Moderate"] == 34)
+CODE_OF <- setNames(DECODE$Code, DECODE$Class)
+
+kable(keep(DECODE, "tbl-decode"), align = "lrrr") |> kable_styling(full_width = FALSE)
+```
+
+Code 1 is high severity and code 34 is moderate, so a table built on the numeric order of the codes would report the two most severe classes the wrong way round. Code 16 is the class that no severity mask claims: `r format(DECODE$Cells[DECODE$Class == "Inside perimeter, unclassified"], big.mark = ",")` cells lying inside the fire perimeter but assigned to none of high, moderate or low.
+
+## The independent record {#sec-aos}
+
+The provincial Aerial Overview Survey is the operational record of forest health in British Columbia. Observers sketch-map damage annually from fixed-wing aircraft and label each polygon by year, causal agent, severity class and host species [@bcaos2026]. It is coarse, it is observer data, and its errors are positional and perceptual rather than spectral. That last property is what makes it useful here: whatever is wrong with it is uncorrelated with the Landsat classification whose footprint is under test.
+
+```{r}
+#| label: aos
+#| echo: true
+#| output: false
+
+## Read with an extent filter built in BC Albers; the provincial layer is
+## memory-hostile whole. Project after filtering, never before.
+e3005 <- project(as.polygons(ext(G), crs = crs(G)), "EPSG:3005")
+aos   <- vect(AOS_GDB, layer = "pest_infestation_poly", extent = ext(e3005))
+AOS_ALL <- nrow(aos)
+aos   <- aos[aos$PEST_SPECIES_CODE == "IBM" & aos$CAPTURE_YEAR %in% OUTBREAK, ]
+AOS_N <- nrow(aos)
+aos   <- project(aos, crs(G))
+```
+
+Over the terrain grid the survey holds `r format(AOS_ALL, big.mark = ",")` damage polygons of all agents and years, of which `r AOS_N` are mountain pine beetle within the `r min(OUTBREAK)` to `r max(OUTBREAK)` outbreak window used here.
+
+# The provenance of the beetle layer {#sec-provenance}
+
+The scoping for this study reported a contingency table in which beetle red attack rose from near zero in unburned forest to roughly a fifth of cells at moderate burn severity. Taken at face value that is a strong compound-disturbance signal. It is also exactly the pattern that a masked raster would manufacture, and the mask is the first thing to rule out.
+
+## Red attack against the fire perimeter {#sec-perimeter}
+
+```{r}
+#| label: tbl-perimeter
+#| echo: true
+#| tbl-cap: "Red-attack cells against the fire perimeter, on the native beetle grid. Every attacked cell falls inside the perimeter and none falls outside it, on ground where the raster extends up to several hundred metres beyond the fire."
+
+Pr <- rasterize(per, red, background = 0)
+V  <- tibble(red = values(red)[, 1], inper = values(Pr)[, 1]) |> filter(!is.na(red))
+
+XT <- V |> count(red, inper) |>
+  mutate(`Beetle red stage` = ifelse(red == 1, "Red attack", "No red attack"),
+         inper = ifelse(inper == 1, "Inside perimeter", "Outside perimeter")) |>
+  select(-red) |>
+  pivot_wider(names_from = inper, values_from = n, values_fill = 0L)
+
+N_RED      <- sum(V$red == 1)
+RED_IN     <- sum(V$red == 1 & V$inper == 1)
+RED_OUT    <- sum(V$red == 1 & V$inper == 0)
+CELLS_OUT  <- sum(V$inper == 0)
+PCT_IN     <- round(100 * mean(V$inper == 1), 1)
+
+## Distance to the perimeter, signed negative inside the burn.
+dm <- distance(rasterize(as.lines(per), red))
+dsign <- values(dm)[, 1]; dsign[V$inper == 1] <- -dsign[V$inper == 1]
+MAX_OUT_RED  <- max(dsign[V$red == 1], na.rm = TRUE)
+MAX_OUT_AVAIL <- max(dsign, na.rm = TRUE)
+
+kable(keep(XT, "tbl-perimeter"), align = "lrr") |> kable_styling(full_width = FALSE)
+```
+
+All `r N_RED` red-attack cells lie inside the fire perimeter and `r RED_OUT` lie outside it, although `r format(CELLS_OUT, big.mark = ",")` cells of the raster, `r 100 - PCT_IN` per cent of it, sit outside the perimeter. The furthest any attacked cell reaches beyond the perimeter is `r round(MAX_OUT_RED)` m, while the raster itself extends `r round(MAX_OUT_AVAIL)` m beyond it. The boundary of the mapped attack is the boundary of the fire, to the cell.
+
+A zero of this kind is not an ecological quantity. Sketch-mapped, spectral and field records of beetle attack all disagree with one another at the margins, and none of them returns an exact zero over three square kilometres of forest that adjoins a heavily attacked stand. The reading that fits is that the red-attack classification was run only where burn severity had been classified.
+
+## The same test against the independent survey {#sec-crosscheck}
+
+If the zero is ecological, the provincial survey should also find little beetle attack outside the burn. If it is a mask, the survey should find as much there as anywhere.
+
+```{r}
+#| label: tbl-crosscheck
+#| echo: true
+#| tbl-cap: "The local classified red-attack surface against the independent Aerial Overview Survey, by burn severity class, on the native beetle grid. The two classes that lie outside the classified burn footprint return exactly zero in the local surface and the two highest attack rates in the survey."
+
+SEV <- resample(sev, red, method = "near")
+A   <- rasterize(aos, red, background = 0)
+EL  <- resample(G, red)
+
+CC <- tibble(sev  = values(SEV)[, 1],
+             red  = values(red)[, 1],
+             aos  = values(A)[, 1],
+             elev = values(EL)[, 1]) |>
+  filter(!is.na(sev), !is.na(red)) |>
+  mutate(Class = names(CODE_OF)[match(sev, CODE_OF)]) |>
+  group_by(Class) |>
+  summarise(Cells = n(),
+            `Local red (%)` = round(100 * mean(red == 1), 1),
+            `Survey attack (%)` = round(100 * mean(aos == 1), 1),
+            `Elevation (m)` = round(mean(elev, na.rm = TRUE)),
+            .groups = "drop") |>
+  mutate(Ratio = ifelse(`Survey attack (%)` > 0,
+                        round(`Local red (%)` / `Survey attack (%)`, 2), NA)) |>
+  arrange(match(Class, c("Outside perimeter", "Inside perimeter, unclassified",
+                         "Low", "Moderate", "High")))
+
+MASKED <- CC |> filter(Class %in% c("Outside perimeter", "Inside perimeter, unclassified"))
+BURNED <- CC |> filter(Class %in% c("Low", "Moderate", "High"))
+
+kable(keep(CC, "tbl-crosscheck"), align = "lrrrrr") |> kable_styling(full_width = FALSE) |>
+  row_spec(which(CC$Class %in% MASKED$Class), background = "#f7e7e7")
+```
+
+The two shaded rows settle it. Outside the classified burn footprint the local surface reports attack in no cell at all, across `r format(sum(MASKED$Cells), big.mark = ",")` of them, while the survey reports attack in `r sprintf("%.1f", MASKED$"Survey attack (%)"[MASKED$Class == "Outside perimeter"])` per cent of the ground beyond the perimeter and `r sprintf("%.1f", MASKED$"Survey attack (%)"[MASKED$Class == "Inside perimeter, unclassified"])` per cent of the unclassified ground within it. The second of those is not merely non-empty, it is the highest attack rate of any class in the table. Inside the classified burn the two records agree in the ordinary way that a coarse sketch map and a fine spectral classification agree, the local surface running at `r min(BURNED$Ratio)` to `r max(BURNED$Ratio)` of the survey rate.
+
+A classification that fails everywhere outside a boundary and performs normally inside it has been masked at that boundary. The `r format(sum(MASKED$Cells), big.mark = ",")` cells in the two shaded rows must therefore be treated as unobserved rather than as unattacked.
+
+```{r}
+#| label: fig-mask
+#| echo: true
+#| fig-cap: "The mask, mapped. Left, the local classified red-attack surface, which stops at the classified burn. Centre, the burn severity classes with the fire perimeter overlaid. Right, the independent Aerial Overview Survey over the same rectangle, which does not stop. The unburned ground in the left panel is empty because it was never classified, not because it was never attacked."
+#| fig-width: 10
+#| fig-height: 5.2
+
+perim_sf <- st_as_sf(per)
+
+## Relabel each surface from its raw codes so the legends carry meaning rather
+## than integers. Cells shown white are outside the fire perimeter entirely.
+relabel <- function(r, from, to) {
+  out <- r
+  values(out) <- factor(to[match(values(r)[, 1], from)], levels = to)
+  out
+}
+panel <- function(r, title, pal) {
+  ggplot() +
+    geom_spatraster(data = r) +
+    geom_sf(data = perim_sf, fill = NA, colour = "grey15", linewidth = 0.4) +
+    scale_fill_manual(values = pal, na.value = "white", name = NULL,
+                      na.translate = FALSE, drop = FALSE) +
+    guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
+    labs(title = title) +
+    coord_sf(expand = FALSE) +
+    theme(axis.text = element_blank(), axis.ticks = element_blank(),
+          panel.grid = element_blank(),
+          plot.title = element_text(face = "bold", size = 9, hjust = 0.5),
+          legend.position = "bottom", legend.key.size = unit(9, "pt"),
+          legend.text = element_text(size = 7),
+          legend.margin = margin(t = 2, b = 0))
+}
+
+SEV_ORDER <- c("Inside perimeter, unclassified", "Low", "Moderate", "High")
+sev_lab <- SEV
+values(sev_lab)[values(sev_lab)[, 1] == CODE_OF[["Outside perimeter"]]] <- NA
+sev_lab <- relabel(sev_lab, CODE_OF[SEV_ORDER], SEV_ORDER)
+
+p1 <- panel(relabel(red, c(0, 1), c("Not detected", "Red attack")),
+            "Local red-attack classification",
+            c(`Not detected` = "grey88", `Red attack` = "#b2182b"))
+p2 <- panel(sev_lab, "Burn severity classes",
+            setNames(c("grey70", "#fddbc7", "#ef8a62", "#67001f"), SEV_ORDER))
+p3 <- panel(relabel(A, c(0, 1), c("Not attacked", "Beetle attack")),
+            "Aerial Overview Survey, beetle",
+            c(`Not attacked` = "grey88", `Beetle attack` = "#2166ac"))
+
+FIG_MASK <- p1 + p2 + p3
+ggsave(file.path("..", "03.outputs", "PNG", "fig-mask.png"), FIG_MASK,
+       width = 10, height = 5.2, dpi = 300)
+FIG_MASK
+```
+
+## What survives {#sec-survives}
+
+The mask destroys any comparison that crosses its boundary and leaves untouched any comparison made entirely inside it. The three severity classes all sit inside the classified footprint, so they are equally exposed to the mask and it cannot generate differences among them.
+
+```{r}
+#| label: tbl-withinburn
+#| echo: true
+#| tbl-cap: "Red attack across burn severity within the classified footprint, in the local surface and in the independent survey. Both records peak at moderate severity and fall at high."
+
+WB <- BURNED |>
+  select(Class, Cells, `Local red (%)`, `Survey attack (%)`, `Elevation (m)`) |>
+  arrange(match(Class, c("Low", "Moderate", "High")))
+PEAK_LOCAL  <- WB$Class[which.max(WB$"Local red (%)")]
+PEAK_SURVEY <- WB$Class[which.max(WB$"Survey attack (%)")]
+kable(keep(WB, "tbl-withinburn"), align = "lrrrr") |> kable_styling(full_width = FALSE)
+```
+
+Within the burn, attack rises from `r WB$"Local red (%)"[WB$Class == "Low"]` per cent at low severity to `r WB$"Local red (%)"[WB$Class == "Moderate"]` per cent at moderate and falls to `r WB$"Local red (%)"[WB$Class == "High"]` per cent at high. The pattern is not monotone, and the independent survey traces the same shape at its own coarser level, `r sprintf("%.1f", WB$"Survey attack (%)"[WB$Class == "Low"])`, `r sprintf("%.1f", WB$"Survey attack (%)"[WB$Class == "Moderate"])` and `r sprintf("%.1f", WB$"Survey attack (%)"[WB$Class == "High"])` per cent, peaking at `r tolower(PEAK_SURVEY)` severity as the local surface does at `r tolower(PEAK_LOCAL)`. Two records that share no measurement pathway agree on the shape, which is more than the local surface could establish alone.
+
+That agreement is not yet evidence about fire. The elevation column in the same table is the reason. Moderate severity occupies the highest mean elevation of the three burned classes at `r WB$"Elevation (m)"[WB$Class == "Moderate"]` m, and the companion refugia analysis of this landscape finds beetle attack peaking near 1,430 m for reasons that have nothing to do with fire [@murphy2026refugia]. A severity gradient that is also an elevation gradient will reproduce the beetle elevation optimum whether or not severity matters. Conditioning on host abundance and on elevation is therefore the first task of the next phase, not a robustness check appended to it.
+
+# Status and next steps {#sec-status}
+
+This document is a Phase 0 draft. It reports the provenance check and nothing further, because the check governs what the rest of the study is permitted to ask.
+
+Question A, as originally posed, compared burned against unburned ground and cannot be asked of these surfaces. It is reframed as a within-burn question about the severity gradient, which the mask does not touch and which two independent records agree upon. Recovering the original comparison would mean rebuilding the red-attack classification over the unmasked landscape, which is a Landsat reprocessing task rather than an analysis task.
+
+Question B is untouched. The regeneration response, the seedling point pattern, lies wholly within the burn, so every cell entering the point process model sits inside the mask and is equally affected by it. Refitting the published additive model with the beetle by fire product term remains the direct test, and it is the next phase of work.
+
+# References
+
+::: {#refs}
+:::
