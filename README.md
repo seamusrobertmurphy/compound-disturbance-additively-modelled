@@ -6,7 +6,7 @@ Generated from the rendered manuscript by `03.outputs/build-readme.py`. Do not e
 
 ## Abstract
 
-Provisional, and deliberately outcome-neutral until the interaction test has run. Compound disturbance is routinely described as an interaction and routinely modelled as a sum. This study separates the two claims over a mountain pine beetle outbreak and the mixed-severity wildfire that followed it in the southern Selkirk Mountains of British Columbia, asking first whether the two agents are associated on the ground and second whether their effects on conifer regeneration multiply or merely add. The first result is negative and concerns the data rather than the forest. The annual beetle classifications from which every beetle surface in the parent study descends were clipped to the fire perimeter before any classification was run, so they carry nodata across almost all of the surrounding unburned forest. The published red-attack surface is confined more tightly still, to the ground where burn severity was classified, and reports beetle attack in no cell outside it. Read at face value that implies almost no beetle mortality in the forest around the fire. The provincial Aerial Overview Survey, an independent record that was never clipped, reports beetle attack outside the perimeter at a rate no lower than inside it, and the small sliver of annual data that does extend beyond the perimeter agrees with the survey rather than with the published surface. Any burned against unburned contrast therefore measures the clip. What survives is the gradient within the perimeter, where every severity class is observed and equally exposed to the clip, and there the corrected grey-stage union, the published red-stage surface and the independent survey all agree that attack peaks at moderate severity rather than rising monotonically. Question A is accordingly reframed as a within-burn question, and the interaction test on regeneration is unaffected.
+Provisional, and deliberately outcome-neutral until the interaction test has run. Compound disturbance is routinely described as an interaction and routinely modelled as a sum. This study separates the two claims over a mountain pine beetle outbreak and the mixed-severity wildfire that followed it in the southern Selkirk Mountains of British Columbia, asking first whether the two agents are associated on the ground and second whether their effects on conifer regeneration multiply or merely add. The first result is negative and concerns the data rather than the forest. The annual beetle classifications from which every beetle surface in the parent study descends were clipped to the fire perimeter before any classification was run, so they carry nodata across almost all of the surrounding unburned forest. The published red-attack surface is confined more tightly still, to the ground where burn severity was classified, and reports beetle attack in no cell outside it. Read at face value that implies almost no beetle mortality in the forest around the fire. The provincial Aerial Overview Survey, an independent record that was never clipped, reports beetle attack outside the perimeter at a rate no lower than inside it, and the small sliver of annual data that does extend beyond the perimeter agrees with the survey rather than with the published surface. Any burned against unburned contrast therefore measures the clip. What survives is the gradient within the perimeter, where every severity class is observed and equally exposed to the clip, and there the corrected grey-stage union, the published red-stage surface and the independent survey all agree that attack peaks at moderate severity. Conditioned on lodgepole cover and elevation that peak attenuates by about two fifths and survives, clearing a spatial block bootstrap interval at every block size the extent can populate. Two further results are negative and both concern extent rather than ecology. Attack at high severity is never distinguishable from attack at low severity, so the fall that completes the non-monotone shape is not supported. And host cover cannot be separated from elevation inside a burn this small, the two correlating at 0.52, so the landscape-scale finding that host governs the pattern can be neither confirmed nor contradicted here. Question A is accordingly answered narrowly and within the burn, and the interaction test on regeneration is unaffected.
 
 ## Results
 
@@ -85,3 +85,76 @@ Every figure and table below is reproduced from the current render, in the order
 | Low | 2158 | 20.8 | 6.3 | 24.5 | 1367 |
 | Moderate | 1403 | 34.6 | 20.7 | 40.6 | 1449 |
 | High | 553 | 27.7 | 12.1 | 33.1 | 1408 |
+
+### Table 7
+
+*Attack, host cover and elevation by burn severity class, and the crude contrast between stands carrying lodgepole and stands without it.*
+
+| Stratum | Cells | Attacked (%) | Lodgepole (%) | Elevation (m) |
+| :--- | ---: | ---: | ---: | ---: |
+| By burn severity |  |  |  |  |
+| High severity | 553 | 27.7 | 18.1 | 1408 |
+| Low severity | 2158 | 20.8 | 17.2 | 1367 |
+| Moderate severity | 1403 | 34.6 | 24.4 | 1449 |
+| Unclassified severity | 1299 | 33.2 | 20.2 | 1442 |
+| By host presence |  |  |  |  |
+| Lodgepole absent | 1973 | 15.3 | 0.0 | 1258 |
+| Lodgepole present | 3440 | 35.3 | 31.3 | 1498 |
+
+### Table 8
+
+*Burn severity coefficients on grey-stage attack, as log-odds against low severity, crude and then conditioned on host presence and elevation. Intervals are spatial block bootstrap percentiles at 500 m blocks. An interval that excludes zero is marked.*
+
+| Model | Term | Estimate | Interval |  |
+| :--- | :--- | ---: | :--- | :--- |
+| Severity only | sevModerate | 0.705 | [0.357, 0.997] | clears zero |
+| sevHigh | 0.378 | [-0.405, 1.133] |  |  |
+| sevUnclassified | 0.639 | [-0.062, 1.157] |  |  |
+| + host + elevation | sevModerate | 0.416 | [0.101, 0.731] | clears zero |
+| sevHigh | 0.286 | [-0.476, 1.002] |  |  |
+| sevUnclassified | 0.328 | [-0.241, 0.946] |  |  |
+| host | 0.186 | [-0.474, 0.855] |  |  |
+| ec | 0.424 | [0.247, 0.674] | clears zero |  |
+| + elevation squared | sevModerate | 0.403 | [0.082, 0.736] | clears zero |
+| sevHigh | 0.277 | [-0.482, 1.021] |  |  |
+| sevUnclassified | 0.306 | [-0.291, 0.929] |  |  |
+| host | 0.196 | [-0.457, 0.923] |  |  |
+| ec | 0.415 | [0.243, 0.649] | clears zero |  |
+| I(ec^2) | 0.023 | [-0.047, 0.120] |  |  |
+
+### Table 9
+
+*The elevation term inside the burn, against the landscape-scale form the companion study reports. The quadratic term is negligible and its implied optimum falls far outside the elevation range the burn spans, so within this clip the relationship is monotone.*
+
+| Quantity | Value |
+| :--- | :--- |
+| Elevation range spanned by the burn | 872 to 1747 m |
+| Linear elevation, log-odds per 100 m | 0.424 [0.247, 0.674] |
+| Quadratic elevation term | 0.023 [-0.047, 0.120] |
+| Implied optimum of the fitted quadratic | 503 m |
+| Landscape-scale optimum, companion study | about 1,430 m |
+
+### Table 10
+
+*The moderate-against-low severity coefficient under block bootstraps of increasing block size, with the number of blocks each affords. The estimate is fixed; only the interval changes. The extent caps the largest usable block, not the conclusion.*
+
+| Block side (m) | Blocks | Estimate | Interval |  |
+| ---: | ---: | ---: | :--- | :--- |
+| 300 | 74 | 0.416 | [0.077, 0.742] | clears zero |
+| 400 | 39 | 0.416 | [0.035, 0.767] | clears zero |
+| 500 | 27 | 0.416 | [0.101, 0.731] | clears zero |
+| 750 | 14 | 0.416 | [0.020, 0.747] | clears zero |
+
+### Table 11
+
+*Residual correlogram of the conditioned model. Dependence is strong within 100 m and has largely decayed by 500 m, which is the basis for the block sizes tried above.*
+
+| Lag (m) | Residual correlation |
+| :--- | ---: |
+| (0,100] | 0.394 |
+| (100,200] | 0.206 |
+| (200,300] | 0.101 |
+| (300,500] | 0.057 |
+| (500,800] | 0.049 |
+| (800,1.2e+03] | 0.020 |
+| (1.2e+03,Inf] | -0.055 |

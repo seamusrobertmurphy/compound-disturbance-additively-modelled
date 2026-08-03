@@ -9,8 +9,8 @@ disturbance interactions; its model enters beetle and fire as additive main effe
 term. This paper tests the interaction the parent asserted, and asks whether the two agents are
 associated on the ground at all.
 
-**Status:** Phase 0 complete and revised against the corrected rasters of 2 June 2026. Renders end
-to end. Everything after §3 of the manuscript is outstanding.
+**Status:** Phases 0 and 1 complete. Renders end to end in about two minutes. The interaction
+refit, question B, is the outstanding work.
 **Sibling and template:** `../beetle-topography-and-wind-study` in `claude-science-library`.
 
 ## Entry point
@@ -60,10 +60,25 @@ Three consequences.
 3. **Question B is untouched.** The seedling point pattern lies wholly inside the burn, so every cell
    entering the point process model sits inside the clip and is equally affected by it.
 
-**The caveat that governs Phase 1.** Moderate severity also occupies the highest mean elevation of
-the three burned classes at 1,449 m, and the sibling study finds beetle attack peaking near 1,430 m
-for reasons unrelated to fire. The agreement may be agreement about elevation. Condition on host and
-elevation before believing the gradient.
+### Phase 1: the gradient conditioned
+
+The caveat that governed Phase 1 was that moderate severity also sits highest of the three burned
+classes at 1,449 m, and the sibling study finds attack peaking near 1,430 m for reasons unrelated to
+fire. Conditioning on lodgepole cover and elevation over 5,413 observed cells settles it three ways.
+
+4. **The moderate-severity peak survives, attenuated by about two fifths.** The crude log-odds
+   against low severity falls from 0.705 to 0.416, and still clears the spatial block bootstrap
+   interval at all four block sizes tried, 300 to 750 m. It is weakest at 750 m, lower bound 0.020
+   on 14 blocks, which is the honest edge of what this extent supports.
+5. **The fall at high severity is not supported.** High against low spans zero in every
+   specification. The non-monotone shape is a claim the data supports at its peak and not at its
+   fall. **Do not report a demonstrated decline at high severity.**
+6. **Host cannot be separated from elevation here.** The two correlate at 0.52 across the burn.
+   Entered together, elevation clears every interval and host clears none, despite a crude contrast
+   of 35.3 against 15.3 per cent. This does not contradict the sibling's host finding; it means the
+   question is unaskable at this extent. Relatedly, the fitted elevation optimum inside the burn
+   lands at 503 m, far outside the 872 to 1,747 m the clip spans, so within the burn the
+   relationship is monotone and the landscape-scale hump is invisible rather than absent.
 
 ## Layout
 
@@ -117,10 +132,18 @@ No raster is stored in this repository. All are read at render time.
    species-assigned subset, and the published 3,886 matches neither and is unexplained.
 10. **Extent is the live methodological risk.** Everything but the terrain grid sits inside an 8 km²
     clip, which is precisely the extent the sibling study shows can reverse a coefficient's sign.
-11. **Moran's I on the red-attack union is 0.728.** Use spatial block intervals at roughly 1 km
-    blocks. Do not report a naive p-value.
-12. **`dplyr::intersect` masks `terra::intersect`.** Namespace it.
-13. **Do not re-present the published index comparison.** The five fire and four beetle indices,
+11. **Never report a naive p-value here, and do not default to 1 km blocks.** The manuscript's own
+    residual correlogram puts dependence at 0.394 within 100 m, decaying to 0.057 by 500 m, so a
+    500 m block holds most of it. The burn affords 27 blocks at 500 m, 14 at 750 m and only 8 at the
+    1 km the sibling study uses, so the sweep across block sizes is reported rather than a single
+    interval. The task request's figure of 0.728 for Moran's I on the red-attack union was not
+    reproduced here and should not be quoted until it is.
+12. **`model.matrix` silently drops rows with an `NA` factor level.** A few cells inside the
+    perimeter carry the outside-perimeter severity code and fall outside the four severity levels.
+    Left in, the design matrix is shorter than the response and every bootstrap index is off by that
+    many. The frame chunk drops them and a `stopifnot` asserts the lengths match. Do not remove it.
+13. **`dplyr::intersect` masks `terra::intersect`.** Namespace it.
+14. **Do not re-present the published index comparison.** The five fire and four beetle indices,
     their separability, ANOVA and SVM diagnostics are in the parent paper's main text and
     supplement, and in three public repositories. Cite them, never re-table them.
 
@@ -133,10 +156,12 @@ No raster is stored in this repository. All are read at render time.
 - **Recovering question A in its original form** would mean rebuilding the classification over the
   unclipped landscape from the Landsat archive. That is a reprocessing task, and it re-treads the
   parent study's published methods.
-- **`mpb_red_na.tif` is missing from the parent repository.** Finding it would replace the narrower
-  of the two clips and is the cheapest possible improvement to the red-stage surface.
-- **Phase 1 and Phase 2 are both live and independent of each other.** See `05.tasks/progress.md`
-  "Next steps".
+- **`mpb_red_na.tif` does not exist anywhere in the parent repository.** Searched on 2 August 2026
+  across the whole tree and it is absent, so the narrower of the two clips cannot be lifted without
+  rebuilding the layer. Closed as gone rather than mislaid.
+- **Phase 2, the interaction refit, is the outstanding analysis.** Question B is untouched by the
+  clip. Build the missing moderate-severity intersection raster first; only high and low exist, and
+  moderate carries the most attack of the three. See `05.tasks/progress.md` "Next steps".
 - **Not yet a submodule of `claude-science-library`.** The task request asked for this; the
   repository was created standalone before the request was worked.
 - **Venue is the author's decision.** Note only that a Forests feature-paper invitation dated

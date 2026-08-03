@@ -1,7 +1,7 @@
 # Progress log: compound beetle and fire disturbance at Darkwoods
 
 **Started:** 2026-08-02
-**Status:** Phase 0 complete and revised against the corrected rasters of 2 June 2026.
+**Status:** Phases 0 and 1 complete. Phase 2, the interaction refit, is next.
 **Last updated:** 2026-08-02
 **Current task request:** `TASK-REQUEST-2026-08-02.md`
 **Parent paper:** Murphy et al. 2026, *Forest Ecology and Management* 618:123985, published
@@ -95,6 +95,60 @@ the render if they ever stop agreeing.
 3,866 is the species-assigned subset rather than a rival survey. The published abstract's 3,886
 matches neither and remains unexplained; query it with the author.
 
+### Phase 1, the gradient conditioned on host and elevation (2 August 2026)
+
+Frame: 5,413 cells inside the fire perimeter that the annual rasters observe, of which 1,518 carry
+grey-stage attack. Response is the corrected grey union, being the denser of the two local surfaces
+and the only one observed throughout the perimeter. Host is lodgepole cover from the provincial
+inventory, summed across the three species slots and reduced to presence. Inference is a spatial
+block bootstrap, 400 replicates, swept across 300, 400, 500 and 750 m blocks. No naive p-value is
+reported anywhere.
+
+**The moderate-severity peak survives conditioning.** Crude log-odds against low severity 0.705,
+falling to 0.416 with host and elevation in the model, so roughly 41 per cent of the crude
+association is host and terrain and the rest is not. It clears the block interval at all four block
+sizes, weakest at 750 m where the lower bound is 0.020 on 14 blocks. A quadratic elevation term
+moves it to 0.403 and changes nothing.
+
+**The fall at high severity is not supported.** High against low spans zero in every specification,
+crude and conditioned. So the non-monotone shape that three records trace is supported at its peak
+and not at its fall, on 553 high-severity cells. The manuscript says so in bold and the framing must
+not overreach it.
+
+**Host cannot be separated from elevation at this extent, and that is a finding about the study
+area.** Lodgepole cover and elevation correlate at 0.52 across the burn. Entered together, elevation
+clears every interval at 0.424 per 100 m and host clears none at 0.186, despite a crude contrast of
+35.3 per cent attacked where lodgepole is present against 15.3 where it is absent. The sibling study
+separates the two because 1,776 m of relief contains pine-poor ground at every height; 8 km² does
+not. **Do not read the null host coefficient as evidence that host does not matter.**
+
+**The elevation optimum is invisible inside the burn.** The fitted quadratic peaks at 503 m, far
+below the 872 to 1,747 m the clip spans, so within the burn the relationship is monotone increasing.
+The sibling's landscape-scale hump at about 1,430 m is not contradicted, it is out of view. An
+analyst working only inside this perimeter would report attack rising with elevation without limit.
+
+**The extent constrains the inference itself, not merely the ecology.** Residual dependence falls
+from 0.394 within 100 m to 0.057 by 500 m, so a 500 m block contains most of it. The burn spans
+about 4.0 by 2.0 km, which affords 27 blocks at 500 m and 14 at 750 m. The sibling uses roughly 1 km
+blocks over a landscape affording hundreds; here 1 km affords eight, which is not a bootstrap. This
+is the paper's own subject matter arriving in its own inference and the manuscript makes the point
+rather than hiding it.
+
+**A bug worth recording.** `model.matrix` silently drops rows whose factor level is `NA`. A handful
+of cells inside the perimeter carry the outside-perimeter severity code and fall outside the four
+severity levels, so the design matrix came out shorter than the response and every bootstrap index
+was off by that many. The frame now drops them explicitly and a `stopifnot` asserts the lengths
+match. It is trap 12 in `INDEX.md`.
+
+**A drafting error caught by the render.** The first draft of the block sweep asserted that the
+moderate coefficient fails at 750 m, carried over from an earlier specification using continuous
+lodgepole cover and raw elevation. Under the reported specification it clears at all four sizes. The
+passage now derives its claim from the sweep object rather than asserting one, so a refit cannot
+leave the prose stranded.
+
+**`mpb_red_na.tif` is gone, not mislaid.** Searched the whole parent tree on 2 August 2026; it does
+not exist. The narrower of the two clips cannot be lifted without rebuilding the layer.
+
 ## Corrections to the task request
 
 Numbers in `TASK-REQUEST-2026-08-02.md` §4 were flagged there as ad hoc and requiring reproduction
@@ -153,27 +207,27 @@ decision; this is it. The provenance finding is the thing a reader most needs up
 
 ## Next steps
 
-0. **Find `mpb_red_na.tif`**, or establish that it is gone. It is the layer the published analysis
-   intended for red attack, and its absence is why the red surface carries the narrower of the two
-   clips. Cheap, and it improves everything downstream.
+1. **Phases 0 and 1 are done.** See the entries above. `mpb_red_na.tif` is confirmed gone from the
+   parent tree, so the narrower of the two clips cannot be lifted without rebuilding the layer.
 
-1. **Phase 1, conditioned on host.** Bring in the Vegetation Resources Inventory host layer the
-   sibling study retrieved, and recompute the within-burn severity gradient conditioned on lodgepole
-   presence and on elevation. If the non-monotone shape survives both, it is a result. If it
-   flattens, the study is about the elevation confound and that is still a real contribution.
-   Report effect sizes with spatial block intervals at roughly 1 km blocks. Moran's I on the
-   red-attack union is 0.728, so naive p-values are worthless. Do not report one.
+2. **Phase 2, the interaction refit.** The outstanding analysis, and untouched by the clip because
+   the seedling point pattern lies wholly inside the burn. Refit the published additive point
+   process model with the beetle by fire product term and compare against the published fit. Two
+   things to do first. Build the missing moderate-severity intersection raster, since only high and
+   low exist and moderate carries the most attack of the three. And settle the seedling frame at
+   3,912 or 3,866, stating which in the Methods and querying the published 3,886 with the author.
 
-2. **Phase 2, the interaction refit.** Question B is untouched by the mask, because the seedling
-   point pattern lies wholly inside the burn. Refit the published additive point process model with
-   the beetle by fire product term and compare. Build the missing moderate-severity intersection
-   raster first; only high and low exist, and moderate carries the most red attack of the three.
+   Use the corrected grey union, not the published red-stage surface, wherever either would serve.
+   Note that the parent study's own corrected refit already puts the grey-stage main effect at
+   roughly zero, p = 0.99, so the interaction term is being added to a model whose grey main effect
+   is null. That is worth stating plainly rather than discovering late.
 
-3. **Framing, with the author.** Deferred to Phase 3 as the task request specifies. The Phase 0
-   result already gives the paper a spine that does not depend on the interaction test resolving
-   either way.
+3. **Framing, with the author.** Deferred to Phase 3 as the task request specifies. Phases 0 and 1
+   already give the paper a spine that does not depend on the interaction test resolving either way:
+   a provenance result that invalidates the burned-against-unburned comparison, a narrow within-burn
+   result that survives conditioning, and two negative results that are both about extent.
 
 4. **Housekeeping.** Register as a submodule of `claude-science-library`. Verify the venue against
    live guidelines before any template work; note the Forests feature-paper invitation of 24 June
    2026. Decide whether copyrighted PDFs may sit in `04.references/literature/` given the repository
-   is public.
+   is public; the parent paper's own PDF is gitignored for that reason.

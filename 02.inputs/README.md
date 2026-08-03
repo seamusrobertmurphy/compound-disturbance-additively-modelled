@@ -9,7 +9,8 @@ working directory and are read at render time from `DARKWOODS_DATA`, which defau
 environment variable to relocate them. The provincial survey is read from `DARKWOODS_AOS`, which
 defaults into the companion refugia repository rather than duplicating a 950 MB geodatabase, and the
 corrected grey-stage package from `DARKWOODS_GREYFIX`, which defaults to
-`Archive/Greystage_Raster_Fix_2026-06-02/` in the parent study's working directory.
+`Archive/Greystage_Raster_Fix_2026-06-02/` in the parent study's working directory. The host layer
+is read from `DARKWOODS_VRI`, also shared with the companion study.
 
 ## Sources
 
@@ -21,6 +22,7 @@ corrected grey-stage package from `DARKWOODS_GREYFIX`, which defaults to
 | Beetle by fire intersections | `beetle-fire/` | Parent study, never used in any manuscript | Author's own | 2021 | Question B interaction term |
 | Fire perimeter | `fire-severity/` | Parent study | Author's own | 2021 | The provenance check |
 | Aerial Overview Survey | `aerial-survey/` | BC Ministry of Forests | Open Government Licence BC | 2026-07-30 | Independent check on the classified beetle layer |
+| Vegetation Resources Inventory | `vri/` | BC Ministry of Forests | Open Government Licence BC | 2026-07-30 | The host layer, question A confound |
 | Seedling point pattern | `seedlings/` | Field mapping, three 4 ha plots | Author's own | 2021 | Question B response |
 | Terrain and wind | `terrain/` | Parent study, from NRCan HRDEM and Global Wind Atlas | Mixed, see folder | 2021 | Question B covariates |
 

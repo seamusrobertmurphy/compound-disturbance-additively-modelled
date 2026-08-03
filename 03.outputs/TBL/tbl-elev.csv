@@ -1,0 +1,6 @@
+"Quantity","Value"
+"Elevation range spanned by the burn","872 to 1747 m"
+"Linear elevation, log-odds per 100 m","0.424  [0.247, 0.674]"
+"Quadratic elevation term","0.023  [-0.047, 0.120]"
+"Implied optimum of the fitted quadratic","503 m"
+"Landscape-scale optimum, companion study","about 1,430 m"

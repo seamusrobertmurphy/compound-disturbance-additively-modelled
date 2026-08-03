@@ -24,8 +24,14 @@ abstract: >
   therefore measures the clip. What survives is the gradient within the perimeter, where every
   severity class is observed and equally exposed to the clip, and there the corrected grey-stage
   union, the published red-stage surface and the independent survey all agree that attack peaks at
-  moderate severity rather than rising monotonically. Question A is accordingly reframed as a
-  within-burn question, and the interaction test on regeneration is unaffected.
+  moderate severity. Conditioned on lodgepole cover and elevation that peak attenuates by about two
+  fifths and survives, clearing a spatial block bootstrap interval at every block size the extent
+  can populate. Two further results are negative and both concern extent rather than ecology. Attack
+  at high severity is never distinguishable from attack at low severity, so the fall that completes
+  the non-monotone shape is not supported. And host cover cannot be separated from elevation inside
+  a burn this small, the two correlating at 0.52, so the landscape-scale finding that host governs
+  the pattern can be neither confirmed nor contradicted here. Question A is accordingly answered
+  narrowly and within the burn, and the interaction test on regeneration is unaffected.
 keywords:
   - compound disturbance
   - mountain pine beetle
@@ -94,6 +100,9 @@ theme_set(theme_minimal(base_size = 10) +
 
 OUTBREAK <- 2005:2014   # red-attack window preceding the 2015 fire
 FIRE_YR  <- 2015L
+B_BOOT   <- 400L        # spatial block bootstrap replicates
+BLOCK_M  <- 500L        # primary block side in metres
+BLOCK_SWEEP <- c(300L, 400L, 500L, 750L)
 
 ## Every table in the document is also written to 03.outputs/TBL as CSV, from the
 ## same object that renders, so the two cannot drift.
@@ -125,8 +134,14 @@ AOS_GDB <- Sys.getenv("DARKWOODS_AOS",
 GREY_FIX <- Sys.getenv("DARKWOODS_GREYFIX",
   file.path(dirname(DATA_ROOT), "Archive", "Greystage_Raster_Fix_2026-06-02"))
 
+## The provincial inventory supplies the host layer, shared with the companion
+## refugia study; see 02.inputs/vri/README.md.
+VRI_PATH <- Sys.getenv("DARKWOODS_VRI",
+  paste0("/Volumes/PortableSSD/Github/claude-science-library/publications-academic/",
+         "beetle-topography-and-wind-study/02.inputs/vri/vri_darkwoods.geojson"))
+
 stopifnot(dir.exists(dpath("beetle_stages")), dir.exists(dpath("fire_severity")),
-          dir.exists(AOS_GDB), dir.exists(GREY_FIX))
+          dir.exists(AOS_GDB), dir.exists(GREY_FIX), file.exists(VRI_PATH))
 
 ## The annual classifications the grey union is built from. 2012 has no file, and
 ## the 2013 and 2014 files use an unrelated code set, so the window stops at 2011.
@@ -177,6 +192,8 @@ footprint <- function(nm, r) {
          `Height (km)` = round((e[4] - e[3]) / 1000, 2),
          `Extent (km2)` = round((e[2] - e[1]) * (e[4] - e[3]) / 1e6, 2))
 }
+
+RES_M <- res(red)[1]
 
 FOOT <- bind_rows(
   footprint("Elevation, terrain grid", G),
@@ -516,11 +533,280 @@ landscape finds beetle attack peaking near 1,430 m for reasons that have nothing
 beetle elevation optimum whether or not severity matters. Conditioning on host abundance and on
 elevation is therefore the first task of the next phase, not a robustness check appended to it.
 
+# Does the gradient survive conditioning? {#sec-conditioning}
+
+Three records agreeing that attack peaks at moderate severity is not yet evidence that severity is
+doing the work. Both agents track host abundance and topography, and lodgepole-rich, mid-elevation
+stands are both more attackable and more burnable, so an apparent association between them may be
+host distribution seen twice. This section conditions on both.
+
+## The analysis frame and the host layer {#sec-frame}
+
+```{r}
+#| label: frame
+#| echo: true
+#| output: false
+
+## Host comes from the provincial inventory, shared with the companion refugia
+## study; see 02.inputs/vri/README.md. Lodgepole cover is summed across the three
+## species slots because a polygon can carry it in any of them.
+vri <- project(vect(VRI_PATH), crs(red))
+pl_pct <- function(cd, pct) ifelse(!is.na(cd) & grepl("^PL", cd),
+                                   ifelse(is.na(pct), 0, pct), 0)
+vri$PL_PCT <- pl_pct(vri$SPECIES_CD_1, vri$SPECIES_PCT_1) +
+              pl_pct(vri$SPECIES_CD_2, vri$SPECIES_PCT_2) +
+              pl_pct(vri$SPECIES_CD_3, vri$SPECIES_PCT_3)
+
+## The frame is every observed cell inside the fire perimeter. The response is the
+## corrected grey union, which is the denser of the two local surfaces and the
+## only one observed throughout the perimeter.
+FR <- tibble(y    = as.integer(values(grey)[, 1] > 0),
+             sev  = names(CODE_OF)[match(values(SEV)[, 1], CODE_OF)],
+             elev = values(EL)[, 1],
+             pl   = values(rasterize(vri, red, field = "PL_PCT"))[, 1],
+             row  = rowFromCell(red, seq_len(ncell(red))),
+             col  = colFromCell(red, seq_len(ncell(red)))) |>
+  filter(INPER, OBS, !is.na(sev), !is.na(elev), !is.na(pl)) |>
+  mutate(sev  = factor(ifelse(sev == "Inside perimeter, unclassified", "Unclassified", sev),
+                       levels = c("Low", "Moderate", "High", "Unclassified")),
+         host = as.integer(pl > 0),
+         ec   = (elev - 1400) / 100) |>       # elevation in 100 m, centred
+  ## A handful of cells inside the perimeter carry the outside-perimeter severity
+  ## code and fall outside the four levels above. Dropping them here is what keeps
+  ## model.matrix and the response the same length; without it model.matrix
+  ## silently drops the rows and every bootstrap index is off by that many.
+  filter(!is.na(sev))
+
+stopifnot(!anyNA(FR$sev), !anyNA(FR$y), !anyNA(FR$elev), !anyNA(FR$pl),
+          nrow(model.matrix(~ sev + host + ec, FR)) == nrow(FR))
+
+N_FR <- nrow(FR); N_HIT <- sum(FR$y)
+```
+
+The frame is `r format(N_FR, big.mark = ",")` cells, of which `r format(N_HIT, big.mark = ",")`
+carry grey-stage attack. Lodgepole is present on `r round(100 * mean(FR$host))` per cent of them.
+
+## Host and elevation cannot be separated at this extent {#sec-collinear}
+
+```{r}
+#| label: tbl-host
+#| echo: true
+#| tbl-cap: "Attack, host cover and elevation by burn severity class, and the crude contrast between stands carrying lodgepole and stands without it."
+
+HOST <- bind_rows(
+  FR |> group_by(Stratum = paste0(as.character(sev), " severity")) |>
+    summarise(Cells = n(), `Attacked (%)` = round(100 * mean(y), 1),
+              `Lodgepole (%)` = round(mean(pl), 1),
+              `Elevation (m)` = round(mean(elev)), .groups = "drop"),
+  FR |> group_by(Stratum = ifelse(host == 1, "Lodgepole present", "Lodgepole absent")) |>
+    summarise(Cells = n(), `Attacked (%)` = round(100 * mean(y), 1),
+              `Lodgepole (%)` = round(mean(pl), 1),
+              `Elevation (m)` = round(mean(elev)), .groups = "drop"))
+
+R_PL_EL <- cor(FR$pl, FR$elev)
+H_PRES <- HOST$`Attacked (%)`[HOST$Stratum == "Lodgepole present"]
+H_ABS  <- HOST$`Attacked (%)`[HOST$Stratum == "Lodgepole absent"]
+
+kable(keep(HOST, "tbl-host"), align = "lrrrr") |> kable_styling(full_width = FALSE) |>
+  pack_rows("By burn severity", 1, 4) |> pack_rows("By host presence", 5, 6)
+```
+
+The crude host contrast is large: `r H_PRES` per cent of cells carrying lodgepole were attacked
+against `r H_ABS` per cent of cells without it, the same direction and roughly the same magnitude
+the companion study finds at landscape extent. But lodgepole cover and elevation correlate at
+`r sprintf("%.2f", R_PL_EL)` across this frame, and that is the difficulty. At landscape extent the
+two can be separated because the elevation gradient runs far enough for pine-poor ground to occur
+at every height. Inside an eight square kilometre burn it does not.
+
+## The severity gradient, conditioned {#sec-conditioned}
+
+```{r}
+#| label: tbl-conditioned
+#| echo: true
+#| tbl-cap: "Burn severity coefficients on grey-stage attack, as log-odds against low severity, crude and then conditioned on host presence and elevation. Intervals are spatial block bootstrap percentiles at 500 m blocks. An interval that excludes zero is marked."
+
+## glm.fit on a prebuilt model matrix rather than formula glm: arithmetically
+## identical and roughly thirty times faster over the bootstrap.
+bfit <- function(X, y, idx) {
+  f <- suppressWarnings(glm.fit(X[idx, , drop = FALSE], y[idx], family = binomial()))
+  if (!f$converged) rep(NA_real_, ncol(X)) else f$coefficients
+}
+blocks_of <- function(side_m) {
+  s <- round(side_m / RES_M)
+  split(seq_len(nrow(FR)), paste(FR$row %/% s, FR$col %/% s))
+}
+block_boot <- function(form, side_m = BLOCK_M, seed = 42) {
+  X <- model.matrix(form, FR); y <- FR$y
+  est <- bfit(X, y, seq_len(nrow(FR)))
+  ids <- blocks_of(side_m); K <- length(ids)
+  set.seed(seed)
+  M <- vapply(seq_len(B_BOOT),
+              function(b) bfit(X, y, unlist(ids[sample.int(K, K, TRUE)], use.names = FALSE)),
+              numeric(ncol(X)))
+  ci <- apply(M, 1, quantile, c(0.025, 0.975), na.rm = TRUE)
+  tibble(Term = colnames(X), Estimate = est, Lower = ci[1, ], Upper = ci[2, ], K = K)
+}
+
+M_CRUDE <- block_boot(y ~ sev)
+M_ADJ   <- block_boot(y ~ sev + host + ec)
+M_QUAD  <- block_boot(y ~ sev + host + ec + I(ec^2))
+
+pick <- function(m, lbl) m |> filter(Term != "(Intercept)") |>
+  transmute(Model = lbl, Term,
+            Estimate = round(Estimate, 3),
+            Interval = sprintf("[%.3f, %.3f]", Lower, Upper),
+            ` ` = ifelse(Lower * Upper > 0, "clears zero", ""))
+COND <- bind_rows(pick(M_CRUDE, "Severity only"),
+                  pick(M_ADJ,   "+ host + elevation"),
+                  pick(M_QUAD,  "+ elevation squared"))
+
+gv <- function(m, tm) m$Estimate[m$Term == tm]
+MOD_CRUDE <- gv(M_CRUDE, "sevModerate"); MOD_ADJ <- gv(M_ADJ, "sevModerate")
+ATTEN <- 100 * (1 - MOD_ADJ / MOD_CRUDE)
+kable(keep(COND, "tbl-conditioned"), align = "llrll") |> kable_styling(full_width = FALSE) |>
+  collapse_rows(1, valign = "top")
+```
+
+Three things follow, and only the first is a positive result.
+
+**Moderate severity survives conditioning, attenuated.** The crude coefficient of
+`r sprintf("%.3f", MOD_CRUDE)` falls to `r sprintf("%.3f", MOD_ADJ)` once host presence and
+elevation are in the model, so roughly `r round(ATTEN)` per cent of the crude association is
+host and terrain. What remains still clears the block interval. Adding a quadratic elevation term
+moves it hardly at all.
+
+**High severity is never distinguishable from low.** Its interval spans zero in every specification.
+The non-monotone shape that all three records trace is therefore a claim the data supports at its
+peak and not at its fall: attack is elevated at moderate severity, and whether it declines at high
+severity cannot be settled from `r format(HOST$Cells[HOST$Stratum == "High severity"], big.mark = ",")`
+cells. **Do not report a demonstrated decline at high severity.**
+
+**Host cover cannot be separated from elevation here, and elevation wins.** Entered alongside
+elevation, host presence carries an interval that spans zero comfortably, despite the crude contrast
+of `r H_PRES` against `r H_ABS` per cent. Elevation is the only covariate whose interval excludes
+zero in every specification. This does not contradict the companion study's finding that host
+governs the landscape pattern; it means that at this extent the question cannot be asked, because
+the two predictors are `r sprintf("%.2f", R_PL_EL)` correlated and the burn is too small to break
+the tie.
+
+```{r}
+#| label: tbl-elev
+#| echo: true
+#| tbl-cap: "The elevation term inside the burn, against the landscape-scale form the companion study reports. The quadratic term is negligible and its implied optimum falls far outside the elevation range the burn spans, so within this clip the relationship is monotone."
+
+EL_RANGE <- range(FR$elev)
+b1 <- gv(M_QUAD, "ec"); b2 <- gv(M_QUAD, "I(ec^2)")
+PEAK <- 1400 + 100 * (-b1 / (2 * b2))
+ELT <- tibble(
+  Quantity = c("Elevation range spanned by the burn",
+               "Linear elevation, log-odds per 100 m",
+               "Quadratic elevation term",
+               "Implied optimum of the fitted quadratic",
+               "Landscape-scale optimum, companion study"),
+  Value = c(sprintf("%.0f to %.0f m", EL_RANGE[1], EL_RANGE[2]),
+            sprintf("%.3f  [%.3f, %.3f]", gv(M_ADJ, "ec"),
+                    M_ADJ$Lower[M_ADJ$Term == "ec"], M_ADJ$Upper[M_ADJ$Term == "ec"]),
+            sprintf("%.3f  [%.3f, %.3f]", b2,
+                    M_QUAD$Lower[M_QUAD$Term == "I(ec^2)"], M_QUAD$Upper[M_QUAD$Term == "I(ec^2)"]),
+            sprintf("%.0f m", PEAK),
+            "about 1,430 m"))
+kable(keep(ELT, "tbl-elev"), align = "ll") |> kable_styling(full_width = FALSE)
+```
+
+The companion study finds beetle attack peaking near 1,430 m across 1,776 m of relief
+[@murphy2026refugia]. Inside this burn the fitted optimum lands at `r round(PEAK)` m, far below
+anything the clip contains, which is the arithmetic way of saying the quadratic has no support here:
+over `r round(diff(EL_RANGE))` m of truncated gradient the relationship is monotone increasing. The
+landscape-scale hump is not contradicted, it is invisible. An analyst working only inside this
+perimeter would report that beetle attack rises with elevation without limit.
+
+## How much inference this extent supports {#sec-blocks}
+
+Moran's I on the response is high and the residuals stay dependent well beyond a single cell, so
+naive standard errors would be meaningless. The block bootstrap fixes that, but the block size is
+not free: blocks must be large enough to contain the dependence and numerous enough to resample.
+Over a burn this size the two requirements collide.
+
+```{r}
+#| label: tbl-blocks
+#| echo: true
+#| tbl-cap: "The moderate-against-low severity coefficient under block bootstraps of increasing block size, with the number of blocks each affords. The estimate is fixed; only the interval changes. The extent caps the largest usable block, not the conclusion."
+
+SWEEP <- lapply(BLOCK_SWEEP, function(m) {
+  r <- block_boot(y ~ sev + host + ec, side_m = m) |> filter(Term == "sevModerate")
+  tibble(`Block side (m)` = m, Blocks = r$K, Estimate = round(r$Estimate, 3),
+         Interval = sprintf("[%.3f, %.3f]", r$Lower, r$Upper),
+         ` ` = ifelse(r$Lower * r$Upper > 0, "clears zero", "spans zero"))
+}) |> bind_rows()
+
+## The correlogram that justifies the block sizes tried.
+res <- residuals(glm(y ~ sev + host + ec, binomial, FR), type = "pearson")
+set.seed(7); ii <- sample(nrow(FR), 3000)
+dd <- sqrt(outer(FR$row[ii], FR$row[ii], "-")^2 +
+           outer(FR$col[ii], FR$col[ii], "-")^2) * RES_M
+rr <- outer(res[ii], res[ii], "*") / var(res[ii])
+ut <- upper.tri(dd)
+bins <- cut(dd[ut], c(0, 100, 200, 300, 500, 800, 1200, Inf))
+CORR <- tibble(`Lag (m)` = levels(bins),
+               `Residual correlation` = round(as.numeric(tapply(rr[ut], bins, mean)), 3))
+
+kable(keep(SWEEP, "tbl-blocks"), align = "rrrll") |> kable_styling(full_width = FALSE)
+```
+
+```{r}
+#| label: tbl-correlogram
+#| echo: true
+#| tbl-cap: "Residual correlogram of the conditioned model. Dependence is strong within 100 m and has largely decayed by 500 m, which is the basis for the block sizes tried above."
+
+kable(keep(CORR, "tbl-correlogram"), align = "lr") |> kable_styling(full_width = FALSE)
+```
+
+Residual dependence falls from `r CORR$"Residual correlation"[1]` within 100 m to
+`r CORR$"Residual correlation"[4]` by 500 m, so a 500 m block contains most of it. The burn spans
+about 4.0 by 2.0 km, which affords `r SWEEP$Blocks[SWEEP$"Block side (m)" == BLOCK_M]` blocks at
+that size and only `r SWEEP$Blocks[which.max(SWEEP$"Block side (m)")]` at
+`r max(SWEEP$"Block side (m)")` m. The companion study uses roughly 1 km blocks over a landscape
+that affords hundreds; here 1 km would afford eight, which is not a bootstrap.
+
+```{r}
+#| label: sweep-summary
+#| echo: true
+#| output: false
+
+## Let the sweep state its own conclusion rather than asserting one that a
+## refit might quietly invalidate.
+N_CLEAR  <- sum(SWEEP$` ` == "clears zero")
+TIGHTEST <- SWEEP$`Block side (m)`[which.max(as.numeric(sub("\\[([-0-9.]+),.*", "\\1",
+                                                            SWEEP$Interval)))]
+WEAKEST  <- SWEEP$`Block side (m)`[which.min(as.numeric(sub("\\[([-0-9.]+),.*", "\\1",
+                                                            SWEEP$Interval)))]
+WEAK_LO  <- min(as.numeric(sub("\\[([-0-9.]+),.*", "\\1", SWEEP$Interval)))
+```
+
+**So the moderate-severity result is reported with its dependence stated.** It clears the interval
+at `r N_CLEAR` of the `r nrow(SWEEP)` block sizes tried, which is all of them, so the conclusion
+does not rest on a convenient choice of block. It is weakest at `r WEAKEST` m, where the lower bound
+sits at `r sprintf("%.3f", WEAK_LO)`, barely above zero on
+`r SWEEP$Blocks[SWEEP$"Block side (m)" == WEAKEST]` blocks. That is the honest edge of what this
+extent supports, and it is why the sweep is reported rather than a single interval.
+
+The general point is not a robustness check that the study passed. It is the study's own subject
+matter arriving in its own inference: the extent that makes the compound-disturbance question
+askable at all is the same extent that decides how firmly it can be answered, and an analyst who
+reported only the 500 m interval would be concealing that the margin at 750 m is a hair's
+breadth.
+
 # Status and next steps {#sec-status}
 
-This document is a Phase 0 draft. It reports the provenance check and nothing further, because the check governs what the rest of the study is permitted to ask.
+This document reports the provenance check and the conditioned within-burn analysis that follows from it. The interaction test on regeneration, which is the paper's second question, is not yet in it.
 
 Question A, as originally posed, compared burned against unburned ground and cannot be asked of these surfaces. It is reframed as a within-burn question about the severity gradient, which the clip does not touch and on which three records agree. Recovering the original comparison would mean rebuilding the classification over the unclipped landscape from the Landsat archive, which is a reprocessing task rather than an analysis task, and it would re-tread the parent study's published methods.
+
+What replaces it is narrower and defensible. Attack is elevated at moderate burn severity after
+conditioning on host and elevation, and that survives a block bootstrap at every block size this
+extent can populate. It is not elevated at high severity in any specification, so the paper must not
+claim the non-monotone shape in full. And host cover cannot be separated from elevation over eight
+square kilometres, which is a limit of the study area rather than a finding about the forest.
 
 Two things follow for the analysis that comes next. The corrected grey-stage union of 2 June 2026 [@murphy2026greyfix] should be preferred to the published red-stage surface wherever either would serve, because it is three times denser, it is observed throughout the perimeter rather than only where severity was classified, and its derivation is documented. And the missing `mpb_red_na.tif` should be looked for before the red-stage surface is used again, since the substitution that replaced it is the narrower of the two clips.
 
