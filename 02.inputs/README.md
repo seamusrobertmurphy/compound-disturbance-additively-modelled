@@ -7,13 +7,16 @@ Central register for every dataset the manuscript reads. Each subfolder carries 
 working directory and are read at render time from `DARKWOODS_DATA`, which defaults to
 `/Users/seamus/repos/publications-pending/Darkwoods-Disturbance-Paper/3.SpatialData`. Set the
 environment variable to relocate them. The provincial survey is read from `DARKWOODS_AOS`, which
-defaults into the companion refugia repository rather than duplicating a 950 MB geodatabase.
+defaults into the companion refugia repository rather than duplicating a 950 MB geodatabase, and the
+corrected grey-stage package from `DARKWOODS_GREYFIX`, which defaults to
+`Archive/Greystage_Raster_Fix_2026-06-02/` in the parent study's working directory.
 
 ## Sources
 
 | Dataset | Folder | Origin | Licence | Retrieved | Used for |
 |---|---|---|---|---|---|
-| Beetle red and grey stage, annual series | `beetle-stages/` | Landsat NDMI classification, parent study | Author's own, unpublished derivative | 2021, built for @murphy2026 | Question A response, question B covariate |
+| Beetle annual series and derived stages | `beetle-stages/` | Landsat classification, parent study | Author's own, unpublished derivative | 2021, built for @murphy2026 | Question A response, question B covariate |
+| Corrected grey-stage package | `beetle-stages/` | Verification re-run of 2 June 2026 | Author's own | 2026-06-02, @murphy2026greyfix | The primary beetle surface |
 | Burn severity, classified | `fire-severity/` | Landsat dNBR classification, parent study | Author's own, unpublished derivative | 2021, built for @murphy2026 | Both questions |
 | Beetle by fire intersections | `beetle-fire/` | Parent study, never used in any manuscript | Author's own | 2021 | Question B interaction term |
 | Fire perimeter | `fire-severity/` | Parent study | Author's own | 2021 | The provenance check |
@@ -23,15 +26,17 @@ defaults into the companion refugia repository rather than duplicating a 950 MB 
 
 ## The trap that governs everything
 
-The classified beetle red-stage surface is **masked to the classified burn-severity footprint**. It
-reports zero attack in every cell outside that footprint, including roughly three square kilometres
-of adjoining unburned forest that the independent survey records as heavily attacked. This is
-established in `01.manuscript/` §3 and is not a matter of opinion: all 493 attacked cells fall
-inside the fire perimeter and none falls outside it.
+The annual beetle classifications are **clipped to the fire perimeter, in the source files**. All
+nine carry an identical nodata count and observe only 10 of the 3,429 cells lying outside the
+perimeter. Every beetle surface in the study descends from them, so none of them can see attack
+outside the burn, while the independent survey records 40 per cent of that ground as attacked.
+`Beetle.Outbreak.RedStage.tif` carries a second, narrower clip to the classified severity footprint,
+because it was substituted for a layer missing from the repository. This is established in
+`01.manuscript/` §3, not asserted here.
 
-The consequence is a rule, not a caveat. **Any comparison that crosses the boundary of the
-classified burn measures the mask.** Comparisons made entirely inside it are unaffected, because
-every severity class sits within the mask and is equally exposed to it.
+The consequence is a rule, not a caveat. **Any comparison that crosses the fire perimeter measures
+the clip.** Comparisons made entirely inside it are unaffected, because every severity class is
+observed at essentially 100 per cent and is equally exposed.
 
 ## Cross-cutting traps
 

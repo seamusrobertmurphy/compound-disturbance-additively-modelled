@@ -1,6 +1,6 @@
-"Class","Cells","Local red (%)","Survey attack (%)","Elevation (m)","Ratio"
-"Outside perimeter",3473,0,40.8,1195,0
-"Inside perimeter, unclassified",1301,0,52,1442,0
-"Low",2174,6.3,24.3,1365,0.26
-"Moderate",1407,20.6,40.5,1448,0.51
-"High",555,12.1,33,1407,0.37
+"Class","Cells","Observed (%)","Observed","Grey (%)","Red (%)","Survey (%)","Elevation (m)"
+"Outside perimeter",3429,0.3,10,10,0,40.4,1190
+"Inside perimeter, unclassified",1367,99.7,1363,33.2,0,51.8,1442
+"Low",2158,100,2158,20.8,6.3,24.5,1367
+"Moderate",1403,100,1403,34.6,20.7,40.6,1449
+"High",553,100,553,27.7,12.1,33.1,1408

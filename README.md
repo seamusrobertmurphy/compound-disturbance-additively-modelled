@@ -6,7 +6,7 @@ Generated from the rendered manuscript by `03.outputs/build-readme.py`. Do not e
 
 ## Abstract
 
-Provisional, and deliberately outcome-neutral until the interaction test has run. Compound disturbance is routinely described as an interaction and routinely modelled as a sum. This study separates the two claims over a mountain pine beetle outbreak and the mixed-severity wildfire that followed it in the southern Selkirk Mountains of British Columbia, asking first whether the two agents are associated on the ground and second whether their effects on conifer regeneration multiply or merely add. The first result is negative and concerns the data rather than the forest. The classified red-attack surface that the parent study used is masked to the classified burn-severity footprint, so it reports beetle attack nowhere outside the burn. Read at face value it implies that almost no beetle mortality occurred in the unburned forest surrounding the fire. The provincial Aerial Overview Survey, an independent record that was never clipped to anything, reports the opposite for the same ground. Any burned against unburned contrast drawn from the masked surface therefore measures the mask. What survives the mask is the gradient within the burn, where all severity classes sit inside the masked footprint and are equally exposed to it, and there both the masked surface and the independent survey agree that attack peaks at moderate severity rather than rising monotonically. Question A is accordingly reframed as a within-burn question, and the interaction test on regeneration is unaffected.
+Provisional, and deliberately outcome-neutral until the interaction test has run. Compound disturbance is routinely described as an interaction and routinely modelled as a sum. This study separates the two claims over a mountain pine beetle outbreak and the mixed-severity wildfire that followed it in the southern Selkirk Mountains of British Columbia, asking first whether the two agents are associated on the ground and second whether their effects on conifer regeneration multiply or merely add. The first result is negative and concerns the data rather than the forest. The annual beetle classifications from which every beetle surface in the parent study descends were clipped to the fire perimeter before any classification was run, so they carry nodata across almost all of the surrounding unburned forest. The published red-attack surface is confined more tightly still, to the ground where burn severity was classified, and reports beetle attack in no cell outside it. Read at face value that implies almost no beetle mortality in the forest around the fire. The provincial Aerial Overview Survey, an independent record that was never clipped, reports beetle attack outside the perimeter at a rate no lower than inside it, and the small sliver of annual data that does extend beyond the perimeter agrees with the survey rather than with the published surface. Any burned against unburned contrast therefore measures the clip. What survives is the gradient within the perimeter, where every severity class is observed and equally exposed to the clip, and there the corrected grey-stage union, the published red-stage surface and the independent survey all agree that attack peaks at moderate severity rather than rising monotonically. Question A is accordingly reframed as a within-burn question, and the interaction test on regeneration is unaffected.
 
 ## Results
 
@@ -20,7 +20,8 @@ Every figure and table below is reproduced from the current render, in the order
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Elevation, terrain grid | 695 | 639 | 25.11 | 16.05 | 17.45 | 280.09 |
 | Beetle red stage | 135 | 66 | 29.56 | 1.95 | 3.99 | 7.78 |
-| Beetle grey stage | 135 | 66 | 29.56 | 1.95 | 3.99 | 7.78 |
+| Beetle grey stage, corrected | 135 | 66 | 29.56 | 1.95 | 3.99 | 7.78 |
+| Beetle grey stage, deprecated | 135 | 66 | 29.56 | 1.95 | 3.99 | 7.78 |
 | Beetle continuous (spatstat) | 52 | 47 | 29.49 | 1.39 | 1.53 | 2.13 |
 | Burn severity, classified | 134 | 66 | 30.00 | 1.98 | 4.02 | 7.96 |
 | Beetle by fire intersection | 136 | 67 | 29.56 | 1.98 | 4.02 | 7.96 |
@@ -39,37 +40,48 @@ Every figure and table below is reproduced from the current render, in the order
 
 ### Table 3
 
-*Red-attack cells against the fire perimeter, on the native beetle grid. Every attacked cell falls inside the perimeter and none falls outside it, on ground where the raster extends up to several hundred metres beyond the fire.*
+*Where each beetle surface stops, against the fire perimeter, on the native 29.558 m beetle grid. The annual rasters carry nodata over almost the whole area outside the perimeter, and the two derived surfaces inherit it.*
 
-| Beetle red stage | Outside perimeter | Inside perimeter |
-| :--- | ---: | ---: |
-| No red attack | 3429 | 4988 |
-| Red attack | 0 | 493 |
+| Surface | Cells present | Inside perimeter | Outside perimeter | Note |
+| :--- | ---: | ---: | ---: | :--- |
+| Annual rasters, any data | 5487 | 5477 | 10 | nodata over the rest |
+| Corrected grey stage, 2005 to 2011 | 1541 | 1540 | 1 | union of code 44 |
+| Red stage, as published | 493 | 493 | 0 | substituted for a missing layer |
 
 ### Table 4
 
-*The local classified red-attack surface against the independent Aerial Overview Survey, by burn severity class, on the native beetle grid. The two classes that lie outside the classified burn footprint return exactly zero in the local surface and the two highest attack rates in the survey.*
+*The two surfaces against the classified severity footprint. Grey attack is recorded throughout the perimeter; red attack is confined to the three classified severity classes and is absent from the 1,268 cells inside the perimeter that no class mask claims.*
 
-| Class | Cells | Local red (%) | Survey attack (%) | Elevation (m) | Ratio |
-| :--- | ---: | ---: | ---: | ---: | ---: |
-| Outside perimeter | 3473 | 0.0 | 40.8 | 1195 | 0.00 |
-| Inside perimeter, unclassified | 1301 | 0.0 | 52.0 | 1442 | 0.00 |
-| Low | 2174 | 6.3 | 24.3 | 1365 | 0.26 |
-| Moderate | 1407 | 20.6 | 40.5 | 1448 | 0.51 |
-| High | 555 | 12.1 | 33.0 | 1407 | 0.37 |
+| Region | Cells | Annual data (%) | Grey attack (%) | Red attack (%) |
+| :--- | ---: | ---: | ---: | ---: |
+| Outside the fire perimeter | 3429 | 0.3 | 0.0 | 0.0 |
+| Inside perimeter, unclassified severity | 1367 | 99.7 | 33.1 | 0.0 |
+| Inside the classified severity footprint | 4136 | 99.5 | 26.3 | 11.9 |
+
+### Table 5
+
+*The two local surfaces against the independent Aerial Overview Survey, by burn severity class. Local rates are computed only over cells the annual rasters actually observe. The survey finds no shortage of beetle attack outside the burn, and neither does the small observed sliver of the local data.*
+
+| Class | Cells | Observed (%) | Observed | Grey (%) | Red (%) | Survey (%) | Elevation (m) |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Outside perimeter | 3429 | 0.3 | 10 | 10.0 | 0.0 | 40.4 | 1190 |
+| Inside perimeter, unclassified | 1367 | 99.7 | 1363 | 33.2 | 0.0 | 51.8 | 1442 |
+| Low | 2158 | 100.0 | 2158 | 20.8 | 6.3 | 24.5 | 1367 |
+| Moderate | 1403 | 100.0 | 1403 | 34.6 | 20.7 | 40.6 | 1449 |
+| High | 553 | 100.0 | 553 | 27.7 | 12.1 | 33.1 | 1408 |
 
 ### Figure 1
 
 ![Figure 1](03.outputs/PNG/fig-mask.png)
 
-*The mask, mapped. Left, the local classified red-attack surface, which stops at the classified burn. Centre, the burn severity classes with the fire perimeter overlaid. Right, the independent Aerial Overview Survey over the same rectangle, which does not stop. The unburned ground in the left panel is empty because it was never classified, not because it was never attacked.*
+*The clip, mapped. Top left, the published red-stage surface, which stops at the classified burn. Top right, the corrected grey-stage union, which reaches the fire perimeter and stops there. Bottom left, the burn severity classes. Bottom right, the independent Aerial Overview Survey, which does not stop at anything. The unburned ground in the two upper panels is empty because it was never observed, not because it was never attacked.*
 
-### Table 5
+### Table 6
 
-*Red attack across burn severity within the classified footprint, in the local surface and in the independent survey. Both records peak at moderate severity and fall at high.*
+*Beetle attack across burn severity within the fire perimeter, in the two local surfaces and in the independent survey. All three peak at moderate severity and fall at high.*
 
-| Class | Cells | Local red (%) | Survey attack (%) | Elevation (m) |
-| :--- | ---: | ---: | ---: | ---: |
-| Low | 2174 | 6.3 | 24.3 | 1365 |
-| Moderate | 1407 | 20.6 | 40.5 | 1448 |
-| High | 555 | 12.1 | 33.0 | 1407 |
+| Class | Cells | Grey (%) | Red (%) | Survey (%) | Elevation (m) |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| Low | 2158 | 20.8 | 6.3 | 24.5 | 1367 |
+| Moderate | 1403 | 34.6 | 20.7 | 40.6 | 1449 |
+| High | 553 | 27.7 | 12.1 | 33.1 | 1408 |

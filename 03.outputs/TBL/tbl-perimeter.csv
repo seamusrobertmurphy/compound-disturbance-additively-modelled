@@ -1,3 +1,4 @@
-"Beetle red stage","Outside perimeter","Inside perimeter"
-"No red attack",3429,4988
-"Red attack",0,493
+"Surface","Cells present","Inside perimeter","Outside perimeter","Note"
+"Annual rasters, any data",5487,5477,10,"nodata over the rest"
+"Corrected grey stage, 2005 to 2011",1541,1540,1,"union of code 44"
+"Red stage, as published",493,493,0,"substituted for a missing layer"

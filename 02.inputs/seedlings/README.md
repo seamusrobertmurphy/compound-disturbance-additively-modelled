@@ -17,12 +17,17 @@ term. Nothing here is in the document yet; this is Phase 2.
 
 ## Traps
 
-1. **Three seedling counts are in circulation and none of them agrees.** The UTM file holds 3,912
-   points, the two reprojected files hold 3,866, and the published abstract reports 3,886 mapped
-   seedlings. Establish which screening produced the published figure before quoting any of them,
-   and state the choice in the Methods. Do not assume the difference is reprojection: the two file
-   families carry entirely different attribute schemas, so they are different products rather than
-   different projections of one product.
+1. **Three seedling counts are in circulation and two of them are now explained.** The parent
+   study's own Table S2 reconciliation, at
+   `5.Submissions/2026-06-19/TableS2_reconciliation.csv`, analyses **3,912** points pooled, and its
+   per-plot rows sum to exactly that (1,037 + 1,268 + 1,607). Its per-species rows sum to **3,866**,
+   which is the count in the two reprojected files, so 3,866 is the species-assigned subset rather
+   than a different survey. The published abstract's **3,886** matches neither and is unexplained.
+   Use 3,912 as the analysis frame and 3,866 where species is required, state which in the Methods,
+   and query the abstract figure with the author before repeating it.
+
+   Do not assume the file families differ only by projection: they carry entirely different
+   attribute schemas.
 
 2. **The two families are not interchangeable.** The UTM file carries the modelling covariates
    already joined (`elevation`, `slope`, `rix`, kernel and host fields); the reprojected pair
@@ -30,5 +35,5 @@ term. Nothing here is in the document yet; this is Phase 2.
    document rather than trusting a join made in 2021.
 
 3. **The point pattern lies wholly inside the burn**, so every cell entering the point process model
-   sits within the masked footprint described in `../README.md`. This is why the mask does not
-   compromise question B.
+   sits within the clipped footprint described in `../README.md` and is equally affected by it. This
+   is why the clip does not compromise question B.

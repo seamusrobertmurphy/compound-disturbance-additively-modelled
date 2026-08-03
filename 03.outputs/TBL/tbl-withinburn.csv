@@ -1,4 +1,4 @@
-"Class","Cells","Local red (%)","Survey attack (%)","Elevation (m)"
-"Low",2174,6.3,24.3,1365
-"Moderate",1407,20.6,40.5,1448
-"High",555,12.1,33,1407
+"Class","Cells","Grey (%)","Red (%)","Survey (%)","Elevation (m)"
+"Low",2158,20.8,6.3,24.5,1367
+"Moderate",1403,34.6,20.7,40.6,1449
+"High",553,27.7,12.1,33.1,1408

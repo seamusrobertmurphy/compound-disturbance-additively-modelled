@@ -1,0 +1,4 @@
+"Region","Cells","Annual data (%)","Grey attack (%)","Red attack (%)"
+"Outside the fire perimeter",3429,0.3,0,0
+"Inside perimeter, unclassified severity",1367,99.7,33.1,0
+"Inside the classified severity footprint",4136,99.5,26.3,11.9
