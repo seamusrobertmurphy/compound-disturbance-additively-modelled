@@ -88,7 +88,9 @@ df-print: kable
 
 ## Every quantity in this manuscript is computed here at render time. Nothing is
 ## quoted from a prior session's notes.
-pkgs <- c("terra", "sf", "knitr", "kableExtra", "ggplot2", "dplyr", "tidyr",
+## patchwork is used only through its `+` and `/` operators in fig-mask, so it
+## looks unused to a search for function calls. Removing it breaks the figure.
+pkgs <- c("terra", "sf", "knitr", "kableExtra", "ggplot2", "dplyr",
           "tibble", "tidyterra", "patchwork")
 invisible(lapply(pkgs, function(p) library(p, character.only = TRUE)))
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = TRUE,
@@ -98,8 +100,7 @@ theme_set(theme_minimal(base_size = 10) +
           theme(panel.grid.minor = element_blank(),
                 plot.title = element_text(face = "bold", size = 10)))
 
-OUTBREAK <- 2005:2014   # red-attack window preceding the 2015 fire
-FIRE_YR  <- 2015L
+OUTBREAK <- 2005:2014   # red-attack window preceding the 2015 fire, which burned in 2015
 B_BOOT   <- 400L        # spatial block bootstrap replicates
 BLOCK_M  <- 500L        # primary block side in metres
 BLOCK_SWEEP <- c(300L, 400L, 500L, 750L)
@@ -647,9 +648,15 @@ block_boot <- function(form, side_m = BLOCK_M, seed = 42) {
   tibble(Term = colnames(X), Estimate = est, Lower = ci[1, ], Upper = ci[2, ], K = K)
 }
 
-M_CRUDE <- block_boot(y ~ sev)
-M_ADJ   <- block_boot(y ~ sev + host + ec)
-M_QUAD  <- block_boot(y ~ sev + host + ec + I(ec^2))
+## Each model is written once. The conditioned formula is used by the coefficient
+## table, the block sweep and the correlogram, and three copies of it would drift.
+F_CRUDE <- y ~ sev
+F_ADJ   <- y ~ sev + host + ec
+F_QUAD  <- y ~ sev + host + ec + I(ec^2)
+
+M_CRUDE <- block_boot(F_CRUDE)
+M_ADJ   <- block_boot(F_ADJ)
+M_QUAD  <- block_boot(F_QUAD)
 
 pick <- function(m, lbl) m |> filter(Term != "(Intercept)") |>
   transmute(Model = lbl, Term,
@@ -733,14 +740,14 @@ Over a burn this size the two requirements collide.
 #| tbl-cap: "The moderate-against-low severity coefficient under block bootstraps of increasing block size, with the number of blocks each affords. The estimate is fixed; only the interval changes. The extent caps the largest usable block, not the conclusion."
 
 SWEEP <- lapply(BLOCK_SWEEP, function(m) {
-  r <- block_boot(y ~ sev + host + ec, side_m = m) |> filter(Term == "sevModerate")
+  r <- block_boot(F_ADJ, side_m = m) |> filter(Term == "sevModerate")
   tibble(`Block side (m)` = m, Blocks = r$K, Estimate = round(r$Estimate, 3),
          Interval = sprintf("[%.3f, %.3f]", r$Lower, r$Upper),
          ` ` = ifelse(r$Lower * r$Upper > 0, "clears zero", "spans zero"))
 }) |> bind_rows()
 
 ## The correlogram that justifies the block sizes tried.
-res <- residuals(glm(y ~ sev + host + ec, binomial, FR), type = "pearson")
+res <- residuals(glm(F_ADJ, binomial, FR), type = "pearson")
 set.seed(7); ii <- sample(nrow(FR), 3000)
 dd <- sqrt(outer(FR$row[ii], FR$row[ii], "-")^2 +
            outer(FR$col[ii], FR$col[ii], "-")^2) * RES_M
@@ -775,12 +782,10 @@ that affords hundreds; here 1 km would afford eight, which is not a bootstrap.
 
 ## Let the sweep state its own conclusion rather than asserting one that a
 ## refit might quietly invalidate.
+LOWERS   <- as.numeric(sub("\\[([-0-9.]+),.*", "\\1", SWEEP$Interval))
 N_CLEAR  <- sum(SWEEP$` ` == "clears zero")
-TIGHTEST <- SWEEP$`Block side (m)`[which.max(as.numeric(sub("\\[([-0-9.]+),.*", "\\1",
-                                                            SWEEP$Interval)))]
-WEAKEST  <- SWEEP$`Block side (m)`[which.min(as.numeric(sub("\\[([-0-9.]+),.*", "\\1",
-                                                            SWEEP$Interval)))]
-WEAK_LO  <- min(as.numeric(sub("\\[([-0-9.]+),.*", "\\1", SWEEP$Interval)))
+WEAKEST  <- SWEEP$`Block side (m)`[which.min(LOWERS)]
+WEAK_LO  <- min(LOWERS)
 ```
 
 **So the moderate-severity result is reported with its dependence stated.** It clears the interval
