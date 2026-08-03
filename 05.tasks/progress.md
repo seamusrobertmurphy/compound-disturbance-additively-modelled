@@ -205,6 +205,59 @@ submodule of `claude-science-library` is outstanding.
 **`INDEX.md` is tracked here.** It is gitignored in the sibling. §10 rule 5 asked for a deliberate
 decision; this is it. The provenance finding is the thing a reader most needs up front.
 
+### Quality pass over the manuscript (2 August 2026)
+
+Ran `/simplify`, four review agents over the `.qmd`, then applied the findings. Every rendered
+table is byte-identical before and after, which is the test that matters: this was a readability
+and robustness pass, not a change to any result.
+
+Applied. One `vals()` helper replaced twenty-eight `values(x)[, 1]` extractions. `GREY_HIT` and
+`RED_HIT` name the attack predicates that had been spelled out fifteen times between them. One
+`show()` helper replaced eleven copies of the `kable(keep(...)) |> kable_styling()` incantation.
+The class vocabulary, previously eight literal vectors in three incompatible orderings, is now
+`SEV_LEVELS`, `ROW_ORDER`, `OUTSIDE` and `UNCLASSED`, defined once. `sev_label()` replaced two
+copies of the `CODE_OF` inverse. The severity decode no longer patches its own class labels
+positionally after building them, which had left the assertion checking its own input. The three
+model formulas moved above the frame so the length guard uses `F_ADJ` rather than inlining it, and
+the guard now covers `F_QUAD` too. `HOST` lost a verbatim duplicate `summarise` body, `tbl-nested`
+nine hand-written means, and the elevation table two hand-rolled interval lookups.
+
+The most valuable fix. The block sweep formatted its numeric bounds into a display string and then
+regex-parsed them back out forty lines later to decide which block sizes clear zero. That regex
+excludes `+` and `e`, so a change to the interval format would have silently turned every bound into
+`NA` and put wrong numbers into the prose with `warning: false` suppressing the complaint. Bounds
+now stay numeric and formatting is a leaf.
+
+Three efficiency fixes, about 15 s off a two-minute render. The 500 m entry in the block sweep was
+recomputing `M_ADJ` bit for bit, so it now reuses it. The correlogram built four dense 3,000 by
+3,000 matrices to read two triangles; it uses `dist()` and one lower triangle instead, which the
+agent measured as agreeing to 1.7e-16, invisible under the reported rounding. And `fig-mask` was
+rendering the four panels twice, once to PNG and once to knitr's device; it now embeds the file it
+just wrote.
+
+Two prose corrections. The clip paragraph claimed "all nine annual files" while `ANN` held only the
+seven in the outbreak window, so the claim was true but not derived in the document, which breaks
+the house rule. There is now an `ANN_ALL` list, the counts are computed, a `stopifnot` asserts they
+really are identical, and the sentence reports `r length(ANN_ALL)`. Two captions carried hard-coded
+numbers the chunks compute, which would have gone stale on a re-render; they now name no figures.
+
+**Skipped, and worth an author decision.** `tbl-crosscheck` and `tbl-host` are built from two
+different frames: the first over every cell in a class, the second over the modelling frame, which
+additionally drops cells with missing elevation or inventory cover. They agree exactly on all three
+burned classes, so nothing reported twice disagrees. But the unclassified class is **1,367 cells in
+`tbl-nested` and `tbl-crosscheck` and 1,299 in `tbl-host`**, a 68-cell difference with no
+explanation in the text, and a referee comparing the two tables would ask. Unifying the frames would
+change printed numbers, so it was out of scope for a quality pass. A `stopifnot` now asserts the two
+paths still agree where they overlap, so the divergence cannot widen silently. Decide before
+submission whether to unify the frames or to state the difference in the Methods.
+
+Also skipped. Refitting the model by formula for the correlogram residuals duplicates a fit
+`block_boot` already does, but it costs 0.029 s and reads more clearly than threading fitted values
+out of `glm.fit`. The AOS geodatabase read costs 39 s, a third of the render, and the extent filter
+does not stop the driver scanning the 950 MB store; the only fix is caching a clipped extract as an
+input file, which moves a step outside the document and against the house rule. Flagged as a
+decision, not taken.
+
 ## Next steps
 
 1. **Phases 0 and 1 are done.** See the entries above. `mpb_red_na.tif` is confirmed gone from the

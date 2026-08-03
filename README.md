@@ -40,7 +40,7 @@ Every figure and table below is reproduced from the current render, in the order
 
 ### Table 3
 
-*Where each beetle surface stops, against the fire perimeter, on the native 29.558 m beetle grid. The annual rasters carry nodata over almost the whole area outside the perimeter, and the two derived surfaces inherit it.*
+*Where each beetle surface stops, against the fire perimeter, on the native beetle grid. The annual rasters carry nodata over almost the whole area outside the perimeter, and the two derived surfaces inherit it.*
 
 | Surface | Cells present | Inside perimeter | Outside perimeter | Note |
 | :--- | ---: | ---: | ---: | :--- |
@@ -50,7 +50,7 @@ Every figure and table below is reproduced from the current render, in the order
 
 ### Table 4
 
-*The two surfaces against the classified severity footprint. Grey attack is recorded throughout the perimeter; red attack is confined to the three classified severity classes and is absent from the 1,268 cells inside the perimeter that no class mask claims.*
+*The two surfaces against the classified severity footprint. Grey attack is recorded throughout the perimeter; red attack is confined to the three classified severity classes and is absent from the cells inside the perimeter that no class mask claims.*
 
 | Region | Cells | Annual data (%) | Grey attack (%) | Red attack (%) |
 | :--- | ---: | ---: | ---: | ---: |

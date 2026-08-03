@@ -93,8 +93,10 @@ df-print: kable
 pkgs <- c("terra", "sf", "knitr", "kableExtra", "ggplot2", "dplyr",
           "tibble", "tidyterra", "patchwork")
 invisible(lapply(pkgs, function(p) library(p, character.only = TRUE)))
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = TRUE,
-                      comment = NA, dpi = 300, fig.align = "center")
+## Only what the YAML `execute:` block cannot express. echo, message, warning,
+## error and comment are already set there; restating them here would let this
+## line silently override the YAML a referee is reading.
+knitr::opts_chunk$set(dpi = 300, fig.align = "center")
 options(scipen = 999)
 theme_set(theme_minimal(base_size = 10) +
           theme(panel.grid.minor = element_blank(),
@@ -105,6 +107,21 @@ B_BOOT   <- 400L        # spatial block bootstrap replicates
 BLOCK_M  <- 500L        # primary block side in metres
 BLOCK_SWEEP <- c(300L, 400L, 500L, 750L)
 
+## The class vocabulary, written once. These strings key match(), %in% and
+## factor(levels=) calls that return NA on a typo rather than erroring, so eight
+## separate copies of them was the wrong number.
+## Each model is written once. The conditioned formula is used by the frame's
+## length guard, the coefficient table, the block sweep and the correlogram, and
+## four copies of it would drift.
+F_CRUDE <- y ~ sev
+F_ADJ   <- y ~ sev + host + ec
+F_QUAD  <- y ~ sev + host + ec + I(ec^2)
+
+SEV_LEVELS <- c("Low", "Moderate", "High")            # the three burned classes
+UNCLASSED  <- "Inside perimeter, unclassified"
+OUTSIDE    <- "Outside perimeter"
+ROW_ORDER  <- c(OUTSIDE, UNCLASSED, SEV_LEVELS)       # display order for class tables
+
 ## Every table in the document is also written to 03.outputs/TBL as CSV, from the
 ## same object that renders, so the two cannot drift.
 TBL_DIR <- file.path("..", "03.outputs", "TBL")
@@ -113,6 +130,16 @@ keep <- function(x, slug) {
   write.csv(x, file.path(TBL_DIR, paste0(slug, ".csv")), row.names = FALSE)
   x
 }
+
+## Every table in the document is rendered the same way. One helper so the
+## styling cannot drift between eleven call sites.
+show <- function(x, slug, align) {
+  kable(keep(x, slug), align = align) |> kable_styling(full_width = FALSE)
+}
+
+## Cell values as a plain vector. `values(r)[, 1]` returns a one-column matrix
+## and was written out twenty-eight times before this existed.
+vals <- function(r) terra::values(r, mat = FALSE)
 ```
 
 ```{r}
@@ -146,9 +173,16 @@ stopifnot(dir.exists(dpath("beetle_stages")), dir.exists(dpath("fire_severity"))
 
 ## The annual classifications the grey union is built from. 2012 has no file, and
 ## the 2013 and 2014 files use an unrelated code set, so the window stops at 2011.
+## ANN is the outbreak window the grey union is built from. ANN_ALL is every
+## annual file on disk, including 2013 and 2014, whose code set is unrelated and
+## which contribute no code 44. The clip claim in sec-perimeter is about all of
+## them, so it needs the wider list rather than the modelling one.
+ANN_YEARS <- 2005:2011
 ANN <- sort(list.files(dpath("beetle_stages"), full.names = TRUE,
-                       pattern = "^Beetle\\.O.*(200[5-9]|201[01])\\.tif$"))
-stopifnot(length(ANN) == 7L)
+                       pattern = paste0("^Beetle\\.O.*(", paste(ANN_YEARS, collapse = "|"), ")\\.tif$")))
+ANN_ALL <- sort(list.files(dpath("beetle_stages"), full.names = TRUE,
+                           pattern = "^Beetle\\.O.*[0-9]{4}\\.tif$"))
+stopifnot(length(ANN) == length(ANN_YEARS), length(ANN_ALL) >= length(ANN))
 ```
 
 # Introduction
@@ -186,12 +220,13 @@ per  <- project(vect(dpath("fire_perimiter", "Fire.Perimiter.shp")), crs(G))
 
 footprint <- function(nm, r) {
   e <- as.vector(ext(r))
+  w <- e[2] - e[1]; h <- e[4] - e[3]
   tibble(Surface = nm,
          Rows = nrow(r), Cols = ncol(r),
          `Cell (m)` = round(res(r)[1], 2),
-         `Width (km)` = round((e[2] - e[1]) / 1000, 2),
-         `Height (km)` = round((e[4] - e[3]) / 1000, 2),
-         `Extent (km2)` = round((e[2] - e[1]) * (e[4] - e[3]) / 1e6, 2))
+         `Width (km)` = round(w / 1000, 2),
+         `Height (km)` = round(h / 1000, 2),
+         `Extent (km2)` = round(w * h / 1e6, 2))
 }
 
 RES_M <- res(red)[1]
@@ -209,7 +244,7 @@ PERIM_KM2 <- as.numeric(sum(expanse(per, unit = "km")))
 RECT_KM2  <- FOOT$`Extent (km2)`[FOOT$Surface == "Beetle red stage"]
 GRID_KM2  <- FOOT$`Extent (km2)`[FOOT$Surface == "Elevation, terrain grid"]
 
-kable(keep(FOOT, "tbl-footprints"), align = "lrrrrrr") |> kable_styling(full_width = FALSE)
+show(FOOT, "tbl-footprints", "lrrrrrr")
 ```
 
 The fire perimeter encloses `r round(PERIM_KM2, 2)` km^2^. The beetle red-stage raster spans a rectangle of `r RECT_KM2` km^2^ around it, so the raster carries roughly `r round(RECT_KM2 - PERIM_KM2, 2)` km^2^ of ground outside the burn on which beetle attack could in principle have been mapped. The terrain grid covers `r round(GRID_KM2, 0)` km^2^ of the same landscape and shows what surrounds the burn.
@@ -225,27 +260,32 @@ The classified severity raster carries integer codes that are not ordered by sev
 
 P <- rasterize(per, sev, background = 0)
 
-DEC <- lapply(c(High = "High", Moderate = "Med", Low = "Low"), function(cl) {
-  m  <- rast(dpath("fire_severity", paste0("Fire.", cl, ".NDBR.tif")))
-  cd <- unique(values(sev)[, 1][values(m)[, 1] == 1])
-  tibble(Class = cl, Code = cd, Cells = sum(values(m)[, 1] == 1, na.rm = TRUE))
+sv <- vals(sev); pv <- vals(P)
+
+## Fraction of a code's cells that fall inside the perimeter. Written once and
+## used for both the classification test and the reported percentage.
+inside_frac <- function(k) mean(pv[sv == k] == 1, na.rm = TRUE)
+
+## Keyed by class label, valued by the filename token, so the label comes from
+## the map rather than from a positional fixup the assertion would then be
+## checking against its own input.
+MASK_FILE <- c(High = "High", Moderate = "Med", Low = "Low")
+DEC <- lapply(names(MASK_FILE), function(cl) {
+  hit <- vals(rast(dpath("fire_severity", paste0("Fire.", MASK_FILE[[cl]], ".NDBR.tif")))) == 1
+  tibble(Class = cl, Code = unique(sv[hit]), Cells = sum(hit, na.rm = TRUE))
 }) |> bind_rows()
-DEC$Class <- c("High", "Moderate", "Low")
 
 ## the two codes that no class mask claims
-unclaimed <- setdiff(na.omit(unique(values(sev)[, 1])), DEC$Code)
+unclaimed <- setdiff(na.omit(unique(sv)), DEC$Code)
 UNC <- tibble(
-  Class = ifelse(sapply(unclaimed, function(k)
-            mean(values(P)[, 1][values(sev)[, 1] == k] == 1, na.rm = TRUE)) > 0.5,
-          "Inside perimeter, unclassified", "Outside perimeter"),
+  Class = ifelse(sapply(unclaimed, inside_frac) > 0.5,
+                 "Inside perimeter, unclassified", "Outside perimeter"),
   Code  = unclaimed,
-  Cells = sapply(unclaimed, function(k) sum(values(sev)[, 1] == k, na.rm = TRUE)))
+  Cells = sapply(unclaimed, function(k) sum(sv == k, na.rm = TRUE)))
 
 DECODE <- bind_rows(UNC, DEC) |>
-  mutate(`Inside perimeter (%)` = round(100 * sapply(Code, function(k)
-           mean(values(P)[, 1][values(sev)[, 1] == k] == 1, na.rm = TRUE)), 1)) |>
-  arrange(match(Class, c("Outside perimeter", "Inside perimeter, unclassified",
-                         "Low", "Moderate", "High")))
+  mutate(`Inside perimeter (%)` = round(100 * sapply(Code, inside_frac), 1)) |>
+  arrange(match(Class, ROW_ORDER))
 
 ## The mapping is load-bearing. Assert it rather than trusting the read.
 stopifnot(DEC$Code[DEC$Class == "High"] == 1,
@@ -253,7 +293,10 @@ stopifnot(DEC$Code[DEC$Class == "High"] == 1,
           DEC$Code[DEC$Class == "Moderate"] == 34)
 CODE_OF <- setNames(DECODE$Code, DECODE$Class)
 
-kable(keep(DECODE, "tbl-decode"), align = "lrrr") |> kable_styling(full_width = FALSE)
+## Code to label, the inverse of CODE_OF, written once.
+sev_label <- function(v) names(CODE_OF)[match(v, CODE_OF)]
+
+show(DECODE, "tbl-decode", "lrrr")
 ```
 
 Code 1 is high severity and code 34 is moderate, so a table built on the numeric order of the codes would report the two most severe classes the wrong way round. Code 16 is the class that no severity mask claims: `r format(DECODE$Cells[DECODE$Class == "Inside perimeter, unclassified"], big.mark = ",")` cells lying inside the fire perimeter but assigned to none of high, moderate or low.
@@ -291,16 +334,22 @@ manufacture, and the clip is the first thing to rule out.
 ```{r}
 #| label: tbl-perimeter
 #| echo: true
-#| tbl-cap: "Where each beetle surface stops, against the fire perimeter, on the native 29.558 m beetle grid. The annual rasters carry nodata over almost the whole area outside the perimeter, and the two derived surfaces inherit it."
+#| tbl-cap: "Where each beetle surface stops, against the fire perimeter, on the native beetle grid. The annual rasters carry nodata over almost the whole area outside the perimeter, and the two derived surfaces inherit it."
 
 Pr <- rasterize(per, red, background = 0)
-INPER <- values(Pr)[, 1] == 1
+INPER <- vals(Pr) == 1
 CELLS_OUT <- sum(!INPER)
-N_RED <- sum(values(red)[, 1] == 1)
+
+## What counts as attack on each surface, named once. Written out fifteen times
+## between them before this existed, which is fifteen places to edit if the grey
+## encoding ever gains a second nonzero code.
+GREY_HIT <- vals(grey) > 0
+RED_HIT  <- vals(red) == 1
+N_RED    <- sum(RED_HIT)
 
 ## A cell is observed if any annual raster in the outbreak window carries data
 ## there. -128 and 128 are the nodata sentinels these files use alongside NA.
-is_obs <- function(f) { v <- values(rast(f))[, 1]; !(is.na(v) | v == -128 | v == 128) }
+is_obs <- function(f) { v <- vals(rast(f)); !(is.na(v) | v == -128 | v == 128) }
 OBS <- Reduce(`|`, lapply(ANN, is_obs))
 
 stop_at <- function(nm, present, note) {
@@ -313,27 +362,35 @@ stop_at <- function(nm, present, note) {
 
 STOPS <- bind_rows(
   stop_at("Annual rasters, any data", OBS, "nodata over the rest"),
-  stop_at("Corrected grey stage, 2005 to 2011", values(grey)[, 1] > 0, "union of code 44"),
-  stop_at("Red stage, as published", values(red)[, 1] == 1, "substituted for a missing layer"))
+  stop_at("Corrected grey stage, 2005 to 2011", GREY_HIT, "union of code 44"),
+  stop_at("Red stage, as published", RED_HIT, "substituted for a missing layer"))
+
+## The claim below is that every annual file carries the same nodata footprint,
+## so it is counted here rather than recalled.
+ND_COUNTS <- vapply(ANN_ALL, function(f) sum(!is_obs(f)), integer(1))
+ND_OUT    <- vapply(ANN_ALL, function(f) sum(!is_obs(f) & !INPER), integer(1))
+## The prose says every annual file carries the same nodata count. Assert it.
+stopifnot(length(unique(ND_COUNTS)) == 1L)
 
 OBS_OUT   <- sum(OBS & !INPER)
-GREY_OUT  <- sum(values(grey)[, 1] > 0 & !INPER)
-RED_OUT   <- sum(values(red)[, 1] == 1 & !INPER)
+GREY_OUT  <- sum(GREY_HIT & !INPER)
+RED_OUT   <- sum(RED_HIT & !INPER)
 PCT_OBS_OUT <- 100 * OBS_OUT / CELLS_OUT
 
-kable(keep(STOPS, "tbl-perimeter"), align = "lrrrl") |> kable_styling(full_width = FALSE)
+show(STOPS, "tbl-perimeter", "lrrrl")
 ```
 
 The annual rasters carry data on `r round(PCT_OBS_OUT, 1)` per cent of the
 `r format(CELLS_OUT, big.mark = ",")` cells lying outside the fire perimeter, and nodata on the
 rest. Every beetle surface in the study descends from those files, so every one of them inherits the
-boundary: the corrected grey union places `r GREY_OUT` of its `r sum(values(grey)[, 1] > 0)` cells
+boundary: the corrected grey union places `r GREY_OUT` of its `r sum(GREY_HIT)` cells
 outside the perimeter and the published red-stage surface places `r RED_OUT` of its `r N_RED`.
 
-**The clip is in the source data, not in any downstream step.** All nine annual files carry an
-identical nodata count, and the boundary it traces is the fire perimeter, which is a shape no
-property of beetle ecology would produce. Whoever prepared the time series clipped it to the burn
-before the classification that used it was ever run.
+**The clip is in the source data, not in any downstream step.** All `r length(ANN_ALL)` annual files
+carry an identical nodata count of `r format(ND_COUNTS[1], big.mark = ",")` cells,
+`r format(ND_OUT[1], big.mark = ",")` of which lie outside the perimeter, and the boundary it traces
+is the fire perimeter, which is a shape no property of beetle ecology would produce. Whoever
+prepared the time series clipped it to the burn before the classification that used it was ever run.
 
 ## Two nested masks, not one {#sec-nested}
 
@@ -342,26 +399,26 @@ The red and grey surfaces do not stop in the same place, and the difference matt
 ```{r}
 #| label: tbl-nested
 #| echo: true
-#| tbl-cap: "The two surfaces against the classified severity footprint. Grey attack is recorded throughout the perimeter; red attack is confined to the three classified severity classes and is absent from the 1,268 cells inside the perimeter that no class mask claims."
+#| tbl-cap: "The two surfaces against the classified severity footprint. Grey attack is recorded throughout the perimeter; red attack is confined to the three classified severity classes and is absent from the cells inside the perimeter that no class mask claims."
 
 SEV <- resample(sev, red, method = "near")
-CLASSIFIED <- values(SEV)[, 1] %in% CODE_OF[c("Low", "Moderate", "High")]
+CLASSIFIED <- vals(SEV) %in% CODE_OF[SEV_LEVELS]
 
-NEST <- tibble(
-  Region = c("Outside the fire perimeter",
-             "Inside perimeter, unclassified severity",
-             "Inside the classified severity footprint"),
-  Cells = c(CELLS_OUT, sum(INPER & !CLASSIFIED), sum(CLASSIFIED)),
-  `Annual data (%)` = round(100 * c(mean(OBS[!INPER]), mean(OBS[INPER & !CLASSIFIED]),
-                                    mean(OBS[CLASSIFIED])), 1),
-  `Grey attack (%)` = round(100 * c(mean((values(grey)[, 1] > 0)[!INPER]),
-                                    mean((values(grey)[, 1] > 0)[INPER & !CLASSIFIED]),
-                                    mean((values(grey)[, 1] > 0)[CLASSIFIED])), 1),
-  `Red attack (%)` = round(100 * c(mean((values(red)[, 1] == 1)[!INPER]),
-                                   mean((values(red)[, 1] == 1)[INPER & !CLASSIFIED]),
-                                   mean((values(red)[, 1] == 1)[CLASSIFIED])), 1))
+## The three regions are not nested: 22 cells carry a classified severity code
+## and fall outside the rasterised perimeter, so these masks are kept as written
+## rather than derived from one another by grouping.
+REGION <- list(`Outside the fire perimeter`               = !INPER,
+               `Inside perimeter, unclassified severity`  = INPER & !CLASSIFIED,
+               `Inside the classified severity footprint` = CLASSIFIED)
+pct_by_region <- function(v) round(100 * vapply(REGION, function(m) mean(v[m]), numeric(1)), 1)
 
-kable(keep(NEST, "tbl-nested"), align = "lrrrr") |> kable_styling(full_width = FALSE)
+NEST <- tibble(Region = names(REGION),
+               Cells = vapply(REGION, sum, integer(1)),
+               `Annual data (%)` = pct_by_region(OBS),
+               `Grey attack (%)` = pct_by_region(GREY_HIT),
+               `Red attack (%)`  = pct_by_region(RED_HIT))
+
+show(NEST, "tbl-nested", "lrrrr")
 ```
 
 Inside the perimeter but outside the classified severity footprint, the annual rasters are
@@ -396,13 +453,10 @@ EL <- resample(G, red)
 ## the severity code alone would put 67 in-perimeter cells that the severity
 ## raster codes 0 into the "outside" row and inflate what little the local data
 ## says out there by a factor of seven.
-CC <- tibble(sev = values(SEV)[, 1], grey = values(grey)[, 1] > 0,
-             red = values(red)[, 1] == 1, aos = values(A)[, 1] == 1,
-             elev = values(EL)[, 1], obs = OBS, inper = INPER) |>
-  mutate(Class = ifelse(!inper, "Outside perimeter",
-                 ifelse(sev %in% CODE_OF[c("Low", "Moderate", "High")],
-                        names(CODE_OF)[match(sev, CODE_OF)],
-                        "Inside perimeter, unclassified"))) |>
+CC <- tibble(sev = vals(SEV), grey = GREY_HIT, red = RED_HIT, aos = vals(A) == 1,
+             elev = vals(EL), obs = OBS, inper = INPER) |>
+  mutate(Class = ifelse(!inper, OUTSIDE,
+                 ifelse(sev %in% CODE_OF[SEV_LEVELS], sev_label(sev), UNCLASSED))) |>
   group_by(Class) |>
   summarise(Cells = n(),
             `Observed (%)` = round(100 * mean(obs), 1),
@@ -412,14 +466,13 @@ CC <- tibble(sev = values(SEV)[, 1], grey = values(grey)[, 1] > 0,
             `Survey (%)` = round(100 * mean(aos), 1),
             `Elevation (m)` = round(mean(elev, na.rm = TRUE)),
             .groups = "drop") |>
-  arrange(match(Class, c("Outside perimeter", "Inside perimeter, unclassified",
-                         "Low", "Moderate", "High")))
+  arrange(match(Class, ROW_ORDER))
 
-OUTROW <- CC |> filter(Class == "Outside perimeter")
-BURNED <- CC |> filter(Class %in% c("Low", "Moderate", "High"))
+OUTROW <- CC |> filter(Class == OUTSIDE)
+BURNED <- CC |> filter(Class %in% SEV_LEVELS)
 
-kable(keep(CC, "tbl-crosscheck"), align = "lrrrrrrr") |> kable_styling(full_width = FALSE) |>
-  row_spec(which(CC$Class == "Outside perimeter"), background = "#f7e7e7")
+show(CC, "tbl-crosscheck", "lrrrrrrr") |>
+  row_spec(which(CC$Class == OUTSIDE), background = "#f7e7e7")
 ```
 
 The shaded row carries the argument. Outside the fire perimeter the survey records
@@ -449,7 +502,7 @@ perim_sf <- st_as_sf(per)
 ## than integers. Cells shown white are outside the fire perimeter entirely.
 relabel <- function(r, from, to) {
   out <- r
-  values(out) <- factor(to[match(values(r)[, 1], from)], levels = to)
+  values(out) <- factor(to[match(vals(r), from)], levels = to)
   out
 }
 panel <- function(r, title, pal) {
@@ -469,32 +522,36 @@ panel <- function(r, title, pal) {
           legend.margin = margin(t = 2, b = 0))
 }
 
-SEV_ORDER <- c("Inside perimeter, unclassified", "Low", "Moderate", "High")
-sev_lab <- SEV
-values(sev_lab)[values(sev_lab)[, 1] == CODE_OF[["Outside perimeter"]]] <- NA
-sev_lab <- relabel(sev_lab, CODE_OF[SEV_ORDER], SEV_ORDER)
+## relabel() maps anything outside `from` to NA, and the outside-perimeter code
+## is not in SEV_ORDER, so those cells already render as na.value white. Masking
+## them by hand first was doing the same work twice.
+SEV_ORDER <- c(UNCLASSED, SEV_LEVELS)
+sev_lab <- relabel(SEV, CODE_OF[SEV_ORDER], SEV_ORDER)
 
 ## Unobserved cells are shown as a class of their own rather than as absence.
-beetle_panel <- function(r, title, hit, col) {
+beetle_panel <- function(r, title, col) {
   x <- r
   values(x) <- factor(ifelse(!OBS, "Not observed",
-                      ifelse(values(r)[, 1] %in% hit, "Attack", "No attack")),
+                      ifelse(vals(r) > 0, "Attack", "No attack")),
                       levels = c("Not observed", "No attack", "Attack"))
   panel(x, title, c(`Not observed` = "white", `No attack` = "grey88", Attack = col))
 }
 
-p1 <- beetle_panel(red,  "Red stage, as published",      1, "#b2182b")
-p2 <- beetle_panel(grey, "Grey stage, corrected 2026-06-02", 1, "#7b3294")
+p1 <- beetle_panel(red,  "Red stage, as published", "#b2182b")
+p2 <- beetle_panel(grey, "Grey stage, corrected 2026-06-02", "#7b3294")
 p3 <- panel(sev_lab, "Burn severity classes",
             setNames(c("grey70", "#fddbc7", "#ef8a62", "#67001f"), SEV_ORDER))
 p4 <- panel(relabel(A, c(0, 1), c("Not attacked", "Beetle attack")),
             "Aerial Overview Survey, beetle",
             c(`Not attacked` = "grey88", `Beetle attack` = "#2166ac"))
 
+## Rendered once. Printing FIG_MASK as well would draw the same four panels a
+## second time on knitr's device; the chunk's fig-width, fig-height and dpi
+## already match these arguments, so the embedded image is identical.
 FIG_MASK <- (p1 + p2) / (p3 + p4)
-ggsave(file.path("..", "03.outputs", "PNG", "fig-mask.png"), FIG_MASK,
-       width = 9, height = 9.6, dpi = 300)
-FIG_MASK
+FIG_PATH <- file.path("..", "03.outputs", "PNG", "fig-mask.png")
+ggsave(FIG_PATH, FIG_MASK, width = 9, height = 9.6, dpi = 300)
+knitr::include_graphics(FIG_PATH)
 ```
 
 ## What survives {#sec-survives}
@@ -511,12 +568,12 @@ among them.
 
 WB <- BURNED |>
   select(Class, Cells, `Grey (%)`, `Red (%)`, `Survey (%)`, `Elevation (m)`) |>
-  arrange(match(Class, c("Low", "Moderate", "High")))
+  arrange(match(Class, SEV_LEVELS))
 shape <- function(col) paste(sprintf("%.1f", WB[[col]]), collapse = ", ")
 PEAKS <- vapply(c("Grey (%)", "Red (%)", "Survey (%)"),
                 function(k) WB$Class[which.max(WB[[k]])], character(1))
 stopifnot(length(unique(PEAKS)) == 1L)
-kable(keep(WB, "tbl-withinburn"), align = "lrrrrr") |> kable_styling(full_width = FALSE)
+show(WB, "tbl-withinburn", "lrrrrr")
 ```
 
 Three records agree on the shape. The corrected grey union runs `r shape("Grey (%)")` per cent
@@ -561,25 +618,30 @@ vri$PL_PCT <- pl_pct(vri$SPECIES_CD_1, vri$SPECIES_PCT_1) +
 ## The frame is every observed cell inside the fire perimeter. The response is the
 ## corrected grey union, which is the denser of the two local surfaces and the
 ## only one observed throughout the perimeter.
-FR <- tibble(y    = as.integer(values(grey)[, 1] > 0),
-             sev  = names(CODE_OF)[match(values(SEV)[, 1], CODE_OF)],
-             elev = values(EL)[, 1],
-             pl   = values(rasterize(vri, red, field = "PL_PCT"))[, 1],
-             row  = rowFromCell(red, seq_len(ncell(red))),
-             col  = colFromCell(red, seq_len(ncell(red)))) |>
-  filter(INPER, OBS, !is.na(sev), !is.na(elev), !is.na(pl)) |>
-  mutate(sev  = factor(ifelse(sev == "Inside perimeter, unclassified", "Unclassified", sev),
-                       levels = c("Low", "Moderate", "High", "Unclassified")),
+RC <- rowColFromCell(red, seq_len(ncell(red)))
+
+FR <- tibble(y    = as.integer(GREY_HIT),
+             sev  = sev_label(vals(SEV)),
+             elev = vals(EL),
+             pl   = vals(rasterize(vri, red, field = "PL_PCT")),
+             row  = RC[, 1],
+             col  = RC[, 2]) |>
+  filter(INPER, OBS, !is.na(elev), !is.na(pl)) |>
+  mutate(sev  = factor(ifelse(sev == UNCLASSED, "Unclassified", sev),
+                       levels = c(SEV_LEVELS, "Unclassified")),
          host = as.integer(pl > 0),
          ec   = (elev - 1400) / 100) |>       # elevation in 100 m, centred
   ## A handful of cells inside the perimeter carry the outside-perimeter severity
   ## code and fall outside the four levels above. Dropping them here is what keeps
   ## model.matrix and the response the same length; without it model.matrix
   ## silently drops the rows and every bootstrap index is off by that many.
+  ## This is the only NA filter on sev: an NA present before the mutate stays NA
+  ## through it, so filtering earlier as well would be the same rows twice.
   filter(!is.na(sev))
 
 stopifnot(!anyNA(FR$sev), !anyNA(FR$y), !anyNA(FR$elev), !anyNA(FR$pl),
-          nrow(model.matrix(~ sev + host + ec, FR)) == nrow(FR))
+          nrow(model.matrix(F_ADJ, FR)) == nrow(FR),
+          nrow(model.matrix(F_QUAD, FR)) == nrow(FR))
 
 N_FR <- nrow(FR); N_HIT <- sum(FR$y)
 ```
@@ -594,21 +656,26 @@ carry grey-stage attack. Lodgepole is present on `r round(100 * mean(FR$host))` 
 #| echo: true
 #| tbl-cap: "Attack, host cover and elevation by burn severity class, and the crude contrast between stands carrying lodgepole and stands without it."
 
-HOST <- bind_rows(
-  FR |> group_by(Stratum = paste0(as.character(sev), " severity")) |>
-    summarise(Cells = n(), `Attacked (%)` = round(100 * mean(y), 1),
-              `Lodgepole (%)` = round(mean(pl), 1),
-              `Elevation (m)` = round(mean(elev)), .groups = "drop"),
-  FR |> group_by(Stratum = ifelse(host == 1, "Lodgepole present", "Lodgepole absent")) |>
-    summarise(Cells = n(), `Attacked (%)` = round(100 * mean(y), 1),
-              `Lodgepole (%)` = round(mean(pl), 1),
-              `Elevation (m)` = round(mean(elev)), .groups = "drop"))
+## One summarise body, two stratifications. The columns differed in nothing.
+strat <- function(g) FR |> group_by(Stratum = g) |>
+  summarise(Cells = n(), `Attacked (%)` = round(100 * mean(y), 1),
+            `Lodgepole (%)` = round(mean(pl), 1),
+            `Elevation (m)` = round(mean(elev)), .groups = "drop")
+
+HOST <- bind_rows(strat(paste0(as.character(FR$sev), " severity")),
+                  strat(ifelse(FR$host == 1, "Lodgepole present", "Lodgepole absent")))
 
 R_PL_EL <- cor(FR$pl, FR$elev)
 H_PRES <- HOST$`Attacked (%)`[HOST$Stratum == "Lodgepole present"]
 H_ABS  <- HOST$`Attacked (%)`[HOST$Stratum == "Lodgepole absent"]
 
-kable(keep(HOST, "tbl-host"), align = "lrrrr") |> kable_styling(full_width = FALSE) |>
+## The two frames are built by different paths; assert they still agree on the
+## quantity both report, so a divergence cannot become silent.
+stopifnot(isTRUE(all.equal(
+  WB$`Grey (%)`,
+  HOST$`Attacked (%)`[match(paste0(SEV_LEVELS, " severity"), HOST$Stratum)])))
+
+show(HOST, "tbl-host", "lrrrr") |>
   pack_rows("By burn severity", 1, 4) |> pack_rows("By host presence", 5, 6)
 ```
 
@@ -648,21 +715,20 @@ block_boot <- function(form, side_m = BLOCK_M, seed = 42) {
   tibble(Term = colnames(X), Estimate = est, Lower = ci[1, ], Upper = ci[2, ], K = K)
 }
 
-## Each model is written once. The conditioned formula is used by the coefficient
-## table, the block sweep and the correlogram, and three copies of it would drift.
-F_CRUDE <- y ~ sev
-F_ADJ   <- y ~ sev + host + ec
-F_QUAD  <- y ~ sev + host + ec + I(ec^2)
-
 M_CRUDE <- block_boot(F_CRUDE)
 M_ADJ   <- block_boot(F_ADJ)
 M_QUAD  <- block_boot(F_QUAD)
 
+## Interval formatting and the clears-zero verdict, written once. The verdict is
+## a logical test on the numbers, never a string compared against a label.
+ci_txt <- function(lo, hi) sprintf("[%.3f, %.3f]", lo, hi)
+clears <- function(lo, hi) lo * hi > 0
+
 pick <- function(m, lbl) m |> filter(Term != "(Intercept)") |>
   transmute(Model = lbl, Term,
             Estimate = round(Estimate, 3),
-            Interval = sprintf("[%.3f, %.3f]", Lower, Upper),
-            ` ` = ifelse(Lower * Upper > 0, "clears zero", ""))
+            Interval = ci_txt(Lower, Upper),
+            ` ` = ifelse(clears(Lower, Upper), "clears zero", ""))
 COND <- bind_rows(pick(M_CRUDE, "Severity only"),
                   pick(M_ADJ,   "+ host + elevation"),
                   pick(M_QUAD,  "+ elevation squared"))
@@ -670,8 +736,7 @@ COND <- bind_rows(pick(M_CRUDE, "Severity only"),
 gv <- function(m, tm) m$Estimate[m$Term == tm]
 MOD_CRUDE <- gv(M_CRUDE, "sevModerate"); MOD_ADJ <- gv(M_ADJ, "sevModerate")
 ATTEN <- 100 * (1 - MOD_ADJ / MOD_CRUDE)
-kable(keep(COND, "tbl-conditioned"), align = "llrll") |> kable_styling(full_width = FALSE) |>
-  collapse_rows(1, valign = "top")
+show(COND, "tbl-conditioned", "llrll") |> collapse_rows(1, valign = "top")
 ```
 
 Three things follow, and only the first is a positive result.
@@ -704,6 +769,13 @@ the tie.
 EL_RANGE <- range(FR$elev)
 b1 <- gv(M_QUAD, "ec"); b2 <- gv(M_QUAD, "I(ec^2)")
 PEAK <- 1400 + 100 * (-b1 / (2 * b2))
+
+## Estimate with its interval, by term. gv() already did the estimate half.
+term_ci <- function(m, tm) {
+  r <- m[m$Term == tm, ]
+  sprintf("%.3f  %s", r$Estimate, ci_txt(r$Lower, r$Upper))
+}
+
 ELT <- tibble(
   Quantity = c("Elevation range spanned by the burn",
                "Linear elevation, log-odds per 100 m",
@@ -711,13 +783,11 @@ ELT <- tibble(
                "Implied optimum of the fitted quadratic",
                "Landscape-scale optimum, companion study"),
   Value = c(sprintf("%.0f to %.0f m", EL_RANGE[1], EL_RANGE[2]),
-            sprintf("%.3f  [%.3f, %.3f]", gv(M_ADJ, "ec"),
-                    M_ADJ$Lower[M_ADJ$Term == "ec"], M_ADJ$Upper[M_ADJ$Term == "ec"]),
-            sprintf("%.3f  [%.3f, %.3f]", b2,
-                    M_QUAD$Lower[M_QUAD$Term == "I(ec^2)"], M_QUAD$Upper[M_QUAD$Term == "I(ec^2)"]),
+            term_ci(M_ADJ, "ec"),
+            term_ci(M_QUAD, "I(ec^2)"),
             sprintf("%.0f m", PEAK),
             "about 1,430 m"))
-kable(keep(ELT, "tbl-elev"), align = "ll") |> kable_styling(full_width = FALSE)
+show(ELT, "tbl-elev", "ll")
 ```
 
 The companion study finds beetle attack peaking near 1,430 m across 1,776 m of relief
@@ -739,25 +809,37 @@ Over a burn this size the two requirements collide.
 #| echo: true
 #| tbl-cap: "The moderate-against-low severity coefficient under block bootstraps of increasing block size, with the number of blocks each affords. The estimate is fixed; only the interval changes. The extent caps the largest usable block, not the conclusion."
 
-SWEEP <- lapply(BLOCK_SWEEP, function(m) {
-  r <- block_boot(F_ADJ, side_m = m) |> filter(Term == "sevModerate")
-  tibble(`Block side (m)` = m, Blocks = r$K, Estimate = round(r$Estimate, 3),
-         Interval = sprintf("[%.3f, %.3f]", r$Lower, r$Upper),
-         ` ` = ifelse(r$Lower * r$Upper > 0, "clears zero", "spans zero"))
+## The 500 m run is M_ADJ exactly: same formula, same blocks, same seed, same
+## draws. Reusing it saves a redundant 400-replicate bootstrap. Each block_boot
+## call seeds itself and draws nothing beforehand, so this cannot perturb the
+## RNG stream of any other run.
+SWEEP_RAW <- lapply(BLOCK_SWEEP, function(m) {
+  fit <- if (m == BLOCK_M) M_ADJ else block_boot(F_ADJ, side_m = m)
+  fit |> filter(Term == "sevModerate") |> mutate(`Block side (m)` = m)
 }) |> bind_rows()
+
+## Numbers stay numbers. Formatting is a leaf, never an input: the previous
+## version formatted these bounds into a string and regex-parsed them back.
+SWEEP <- SWEEP_RAW |>
+  transmute(`Block side (m)`, Blocks = K, Estimate = round(Estimate, 3),
+            Interval = ci_txt(Lower, Upper),
+            ` ` = ifelse(clears(Lower, Upper), "clears zero", "spans zero"))
 
 ## The correlogram that justifies the block sizes tried.
 res <- residuals(glm(F_ADJ, binomial, FR), type = "pearson")
 set.seed(7); ii <- sample(nrow(FR), 3000)
-dd <- sqrt(outer(FR$row[ii], FR$row[ii], "-")^2 +
-           outer(FR$col[ii], FR$col[ii], "-")^2) * RES_M
-rr <- outer(res[ii], res[ii], "*") / var(res[ii])
-ut <- upper.tri(dd)
-bins <- cut(dd[ut], c(0, 100, 200, 300, 500, 800, 1200, Inf))
-CORR <- tibble(`Lag (m)` = levels(bins),
-               `Residual correlation` = round(as.numeric(tapply(rr[ut], bins, mean)), 3))
 
-kable(keep(SWEEP, "tbl-blocks"), align = "rrrll") |> kable_styling(full_width = FALSE)
+## dist() enumerates pairs in the same column-major order lower.tri() selects,
+## so the two vectors stay aligned. The previous form built four dense 3000 by
+## 3000 matrices to read two triangles out of them.
+dd <- as.vector(dist(cbind(FR$row[ii], FR$col[ii]))) * RES_M
+rr <- outer(res[ii], res[ii], "*") / var(res[ii])
+rr <- rr[lower.tri(rr)]
+bins <- cut(dd, c(0, 100, 200, 300, 500, 800, 1200, Inf))
+CORR <- tibble(`Lag (m)` = levels(bins),
+               `Residual correlation` = round(as.numeric(tapply(rr, bins, mean)), 3))
+
+show(SWEEP, "tbl-blocks", "rrrll")
 ```
 
 ```{r}
@@ -765,7 +847,7 @@ kable(keep(SWEEP, "tbl-blocks"), align = "rrrll") |> kable_styling(full_width = 
 #| echo: true
 #| tbl-cap: "Residual correlogram of the conditioned model. Dependence is strong within 100 m and has largely decayed by 500 m, which is the basis for the block sizes tried above."
 
-kable(keep(CORR, "tbl-correlogram"), align = "lr") |> kable_styling(full_width = FALSE)
+show(CORR, "tbl-correlogram", "lr")
 ```
 
 Residual dependence falls from `r CORR$"Residual correlation"[1]` within 100 m to
@@ -782,10 +864,9 @@ that affords hundreds; here 1 km would afford eight, which is not a bootstrap.
 
 ## Let the sweep state its own conclusion rather than asserting one that a
 ## refit might quietly invalidate.
-LOWERS   <- as.numeric(sub("\\[([-0-9.]+),.*", "\\1", SWEEP$Interval))
-N_CLEAR  <- sum(SWEEP$` ` == "clears zero")
-WEAKEST  <- SWEEP$`Block side (m)`[which.min(LOWERS)]
-WEAK_LO  <- min(LOWERS)
+N_CLEAR  <- sum(clears(SWEEP_RAW$Lower, SWEEP_RAW$Upper))
+WEAKEST  <- SWEEP_RAW$`Block side (m)`[which.min(SWEEP_RAW$Lower)]
+WEAK_LO  <- min(SWEEP_RAW$Lower)
 ```
 
 **So the moderate-severity result is reported with its dependence stated.** It clears the interval
