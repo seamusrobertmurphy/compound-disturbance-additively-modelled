@@ -1,7 +1,16 @@
 # Venue note
 
 **Date:** 5 August 2026
-**Status:** open. The task request reserves venue selection to the author and this note does not close it.
+**Status: SUPERSEDED the same day by `CJFR-GUIDELINES-VERIFIED-2026-08-05.md`.** The author selected
+the Canadian Journal of Forest Research. Kept because it records the shortlist and the reasoning that
+led there, and because its reading of what the paper had become still governs the framing.
+
+Two things in it are now known to be wrong or incomplete. It treats the CJFR Discussion article type
+as the attraction; that type applies only to papers published within CJFR and is unavailable to us,
+and it does not matter because CJFR charges nothing for a Research article either. And it records
+Forests, Ecosphere and Methods in Ecology and Evolution as live options; all three are gold open
+access with no free route and are ruled out by the author's APC-free constraint.
+
 **Purpose:** record what was verified, what could not be, and what the shape of the finished paper implies.
 
 ## What the paper turned out to be

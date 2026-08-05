@@ -2,7 +2,8 @@
 
 **Started:** 2026-08-02
 **Status:** Phases 0 to 4 complete. The manuscript is a complete draft: provenance, conditioned
-gradient, interaction refit, discussion and conclusions. Venue is the outstanding decision.
+gradient, interaction refit, discussion and conclusions. **Venue settled: Canadian Journal of Forest
+Research, Research article.** Remaining work is compliance, packaging and three author decisions.
 **Last updated:** 2026-08-05
 **Current task request:** `TASK-REQUEST-2026-08-02.md`
 **Parent paper:** Murphy et al. 2026, *Forest Ecology and Management* 618:123985, published
@@ -334,29 +335,78 @@ bootstrap. Acceptable, and cheaper than moving the analysis out of the document.
 
 ## Next steps
 
-The analysis is complete and the manuscript is a complete draft. What remains is author decisions and
-housekeeping, not work that changes a number.
+**Venue settled on 5 August 2026: Canadian Journal of Forest Research, as a Research article.**
+Guidelines verified the same day and recorded in `CJFR-GUIDELINES-VERIFIED-2026-08-05.md`, which
+supersedes `VENUE-NOTE-2026-08-05.md`. Publication is free: the journal is subscription-based with no
+page charges, and open access is optional at USD 3,750. The Discussion article type, which was the
+original attraction because it is exempt from the open access fee, turned out not to apply: it is for
+papers published within CJFR, caps at about 2,000 words, and excludes original unpublished results.
+All three disqualify us, and none of it matters because the subscription route costs nothing.
 
-1. **Venue, and it is the binding item.** See `VENUE-NOTE-2026-08-05.md`. Two emails settle it: read
-   the Forests feature-paper invitation of 24 June 2026 for its APC terms and its scope language, and
-   ask the *Forest Ecology and Management* editor whether a re-analysis of a paper they published in
-   2026 is admissible and under what article type. Both publisher sites returned 403 to a direct
-   fetch, so nothing in that note was read off the live page and every figure in it needs confirming
-   in a browser. Do no template work before this resolves; the Elsevier extension is vendored and
-   the document already renders to Word, so formatting is cheap and late.
+The analysis is complete and nothing below changes a number. The work is compliance, packaging and
+three author decisions.
 
-2. **Query the published 3,886 with the author.** `Seedlings.shp` holds 3,912 points and the
-   seven-species filter leaves 3,866. No filter tried reproduces 3,886. The manuscript says so.
+### 1. Compliance, in the order it should be done
 
-3. **Two author decisions carried over.** Whether to unify the `tbl-crosscheck` and `tbl-host`
-   frames or to state their 68-cell difference in the Methods; a `stopifnot` currently prevents the
-   divergence widening silently. And whether copyrighted PDFs may sit in `04.references/literature/`
-   given the repository is public, the parent paper's own PDF being gitignored for that reason.
+1. **Cut the abstract from 323 words to 200.** The hard limit for every CJFR article type. This is
+   the only limit the manuscript actually breaks on length.
+2. **Split 16 tables into a main set and supplementary.** No numeric cap is stated, but the guideline
+   is that "all figures and tables should be necessary to support the text", and sixteen will read as
+   padding. A defensible main set is the provenance evidence, the conditioned gradient, the
+   reproduction of the published fit, the product terms and the block sweep. The decode, footprint,
+   correlogram and support tables are supplementary. **This is a judgement about which tables carry
+   the argument, so make it deliberately rather than by counting.** Supplementary items renumber as
+   Table S1, Fig. S1 and must be cited in the text in a footnote.
+3. **Switch the citation style to Harvard.** `04.references/cjfr.csl` is already downloaded and
+   validated; the `.qmd` still points at `apa.csl`. Note that Zotero's CJFR style is a dependent of
+   the Fisheries and Aquatic Sciences style, so the file is the NRC Research Press parent saved under
+   the CJFR name. CJFR wants DOIs and hyperlinks included, which the current bib mostly has.
+4. **Add line numbering**, required on all submissions, and confirm the docx render is double-spaced,
+   single column, with page numbers.
+5. **Decide what happens to the 24 echoed code chunks.** The house rule puts every chunk in the
+   document with `echo: true`, which is right for the repository and wrong for a submitted
+   manuscript. The likely answer is a docx render with code folded out and the executable `.qmd`
+   deposited, but this is a real decision and it interacts with item 7.
 
-4. **Housekeeping.** Register as a submodule of `claude-science-library`.
+### 2. Statements to write, none of which exist yet
 
-5. **Not needed after all.** The moderate-severity intersection raster, listed here on 2 August as a
-   Phase 2 prerequisite, was never required: the interaction is fitted from the severity class masks
-   directly, so the intersection rasters play no part in it. And the caution that the interaction was
-   being added to a model whose grey main effect is null proved correct and is now derived in the
-   document rather than recalled, in `tbl-ppreproduce`.
+Author contribution using CRediT roles, competing interests, funding, and data availability. The
+first three are close to boilerplate for a single-author unfunded paper. The fourth is not: see
+below.
+
+### 3. The three author decisions, in descending order of consequence
+
+6. **The parent paper's co-authors.** Murphy et al. 2026 is Murphy, Leslie, Wilson and Banks. This
+   manuscript is single-author and its main result revises the inference in that paper. CJFR uses
+   single-anonymous review, so referees will see that the critic is one of the criticised. That helps
+   if the framing is candid and hurts badly if the co-authors have not been told. Decide whether they
+   are notified, whether any belong on this paper, and whether *Forest Ecology and Management* should
+   be told. **Nothing about this is recorded anywhere and it is the item most likely to cause trouble
+   late.**
+7. **What may be deposited.** CJFR partners with Dryad and deposit is free through the end of 2026.
+   A paper whose argument is reproducibility should take that offer. The obstacle is that the source
+   rasters belong to the parent study and are not this author's alone to license. Settle what can be
+   deposited before writing the data availability statement.
+8. **The published 3,886 seedling count.** `Seedlings.shp` holds 3,912 and the seven-species filter
+   leaves 3,866. No filter reproduces 3,886. The manuscript says so. Confirm or correct.
+
+### 4. Carried over, unchanged
+
+9. **The `tbl-crosscheck` and `tbl-host` frames differ by 68 cells** in the unclassified class with
+   no explanation in the text. A `stopifnot` stops the divergence widening. Unify the frames or state
+   the difference in the Methods.
+10. **The contested literature is still absent from the bibliography.** Harvey, Hart and Simard are
+    named in the task request as the literature the introduction's first question sits in, and none
+    of them is in `references-compound.bib`, which the manifest records as outstanding. Thirteen
+    references against a limit of fifty leaves ample room, and an introduction this thin on the
+    contested literature is an easy referee complaint.
+11. **Whether copyrighted PDFs may sit in a public `04.references/literature/`.** The parent paper's
+    own PDF is gitignored for this reason.
+12. **Register as a submodule of `claude-science-library`.**
+
+### 5. Not needed
+
+The moderate-severity intersection raster, listed on 2 August as a Phase 2 prerequisite, was never
+required: the interaction is fitted from the severity class masks directly. And the Elsevier template
+vendored in `_extensions/` is now dead weight; CJFR submits to ScholarOne as a Word file and has no
+Quarto template. Leave it or remove it, but do not format to it.

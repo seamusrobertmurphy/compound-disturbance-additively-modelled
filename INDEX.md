@@ -10,8 +10,10 @@ term. This paper tests the interaction the parent asserted, and asks whether the
 associated on the ground at all.
 
 **Status:** complete draft. Provenance check, conditioned within-burn gradient, interaction refit,
-discussion and conclusions. Renders end to end in about three and a half minutes. **Venue is the
-outstanding decision**, see `05.tasks/VENUE-NOTE-2026-08-05.md`.
+discussion and conclusions. Renders end to end in about three and a half minutes.
+**Venue: Canadian Journal of Forest Research, Research article.** Guidelines verified 5 August 2026
+in `05.tasks/CJFR-GUIDELINES-VERIFIED-2026-08-05.md`. Publication is free; the abstract and the table
+count are the two limits the draft breaks.
 **Sibling and template:** `../beetle-topography-and-wind-study` in `claude-science-library`.
 
 ## Entry point
@@ -202,10 +204,18 @@ No raster is stored in this repository. All are read at render time.
   submission whether to unify the frames or state the difference in the Methods.
 - **Not yet a submodule of `claude-science-library`.** The task request asked for this; the
   repository was created standalone before the request was worked.
-- **Venue is the author's decision and it is now the binding item.** See
-  `05.tasks/VENUE-NOTE-2026-08-05.md`. Both publisher sites returned 403 to a direct fetch on
-  5 August 2026, so every figure in that note came from search-result text and needs confirming in a
-  browser. The two things that actually decide it are in an inbox rather than on a website: whether
-  the Forests feature-paper invitation of 24 June 2026 carries an APC waiver and what scope language
-  it uses, and whether *Forest Ecology and Management* will consider a re-analysis of a paper it
-  published in 2026. Do no template work before both are answered.
+- **Venue is settled and the compliance gap is small.** Canadian Journal of Forest Research, Research
+  article, free to publish. The abstract must fall from 323 words to 200, the sixteen tables need a
+  main and supplementary split, the citation style must go from APA to Harvard using the
+  `04.references/cjfr.csl` already downloaded, and line numbering must be added. The body is 5,323
+  words against a 6,000 limit and 13 references against 50, so length is not a problem. Full detail
+  and the compliance table are in `05.tasks/CJFR-GUIDELINES-VERIFIED-2026-08-05.md`; the workplan is
+  in `05.tasks/progress.md`.
+- **`cdnsciencepub.com` returns 403 to every automated fetch.** The guidelines were read through a
+  text-extraction proxy and the journal-specific section had to be parsed out of raw HTML because it
+  sits behind a JavaScript selector. There is no Wayback capture of the author page to cross-check
+  against. **Confirm the limits in a browser before submitting.**
+- **The parent paper's co-authors have not been consulted.** Murphy et al. 2026 is Murphy, Leslie,
+  Wilson and Banks; this manuscript is single-author and revises that paper's inference. CJFR uses
+  single-anonymous review, so referees will see the overlap. Nothing about notification or authorship
+  is recorded anywhere. This is the open item most likely to cause trouble late.
