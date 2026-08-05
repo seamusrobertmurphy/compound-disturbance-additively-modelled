@@ -185,6 +185,65 @@ so @sec-ppframe should explain the Berman-Turner device briefly rather than assu
 rather than significance. Our decision to report no naive p-value anywhere is aligned with where the
 journal is going, not against it, and the Discussion can say so.
 
+## The anatomy of the closest analogue
+
+Stevens-Rumann et al. 2016 was read in full. It asks our Question A with fire in place of beetle:
+does a prior disturbance change the severity of the fire that follows. Its shape is the best
+available template.
+
+| Section | Their words | Their share | This manuscript | Our share |
+|---|---:|---:|---:|---:|
+| Introduction | 930 | 15% | 442 | 8% |
+| Methods | 2,040 | 34% | 622 (Materials) | 11% |
+| Results | 900 | 15% | 2,797 (three analysis sections) | 50% |
+| Discussion | 1,660 | 28% | 1,424 | 25% |
+| Conclusions | 500 | 8% | 315 | 6% |
+| **Main text** | **6,030** | | **5,600** | |
+
+Totals are close. The distribution is not, and two differences matter.
+
+**Our Introduction is half the size it should be.** 442 words against 930, and four cited works
+against their fifty references. This is the same defect as the citation gap seen from another angle,
+and one edit fixes both: take the Introduction to roughly 900 words and to about fifteen citations,
+using the CJFR papers listed above. That is the single highest-value revision available.
+
+**Their Methods is twice their Results; ours is the reverse.** That is largely an artefact of the
+executable format, which interleaves method and result in the same section rather than separating
+them, and it is defensible. But it means a referee looking for a Methods section will not find one.
+The three analysis sections should carry enough signposting that the methodological choices are
+findable, and @sec-ppframe in particular should read as Methods.
+
+Four further observations that bear on our revisions.
+
+**They report naive p-values, and we do not.** Their coefficient table is a wall of values below
+0.0001 computed at sample sizes up to 975,414, and they half acknowledge the problem by noting that
+significance was decoupled from model inclusion. Their actual selection rule is a hard difference in
+AIC of 50, stated once without justification. There are no confidence intervals anywhere in the
+paper. **Our reporting standard is above the one this journal accepted for the closest comparable
+paper**, and the Discussion should say so plainly rather than apologetically.
+
+**They never fit an interaction.** Their substitute is a stratified two-variable submodel, which is
+why their contradictory result on one of the four fires is left unresolved. A paper that fits the
+product term directly has a clean, statable advance, and that sentence belongs in our Introduction.
+
+**The compound-disturbance literature is open ground here.** Their framing is self-regulation,
+ecological memory and top-down versus bottom-up control. The phrase "compound disturbance" does not
+appear, Paine et al. 1998 is not cited, and their term of art is "fire on fire interactions". So the
+cross-agent framing this manuscript uses is not competing with an established house style; it is
+filling a gap, and can be introduced as such.
+
+**The trap they fell into, which we must not.** The reburned fraction is a small minority of their
+modelled pixels, and the paper gives two irreconcilable figures for it, 15 per cent in the abstract
+and "roughly 3 per cent" in the discussion. Sample sizes are reported for the whole landscape, so a
+reader cannot tell how much data supports the headline contrast. **Report the stratum sizes
+explicitly.** @tbl-ppsupport already does this for the point process and is, on this evidence, one of
+the manuscript's stronger features rather than a candidate for supplementary.
+
+**Their abstract is 195 words and nine sentences**, containing no coefficient, no interval, no sample
+size and no p-value. Its only numbers are the scale of the study system. Results are stated
+qualitatively with one directional word and one differentiating phrase. Ours must fall from 323 words
+to 200, and this is the model for how.
+
 ## The article type question, settled by observation
 
 CJFR runs an active Comment and Discussion-Reply exchange: Duchesne and Ouimet 2011, Klein et al.
