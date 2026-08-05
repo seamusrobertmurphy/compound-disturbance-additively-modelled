@@ -34,6 +34,15 @@ sibling repository respectively. **Check `/Volumes/PortableSSD` is mounted first
 `README.md` is generated from the render by `03.outputs/build-readme.py`. Rerun it after every
 render; never edit it by hand.
 
+**Headings are limited to three words and are written in formal scientific vocabulary.** This is an
+author rule, applied on 5 August 2026, and it governs chapter, section and subsection headings alike.
+The manuscript previously used descriptive sentence headings such as "Do the two agents interact in
+the model?"; these are now "Regeneration interaction" and the like. **Do not restore the longer
+forms.** The `{#sec-...}` anchors were left untouched when the headings were rewritten, so every
+cross-reference still resolves, and `number-sections` means a reference renders as a section number
+rather than the heading text. A future rewrite of a heading is therefore safe for cross-references
+but must respect the three-word limit.
+
 ## The finding so far
 
 **The annual beetle classifications are clipped to the fire perimeter, in the source files.** All
