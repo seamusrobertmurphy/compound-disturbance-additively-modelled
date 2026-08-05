@@ -897,7 +897,7 @@ RECORDS <- c(`Grey (%)` = "Grey stage, corrected",
              `Survey (%)` = "Aerial Overview Survey")
 PEAKS <- vapply(names(RECORDS), function(k) WB$Class[which.max(WB[[k]])], character(1))
 stopifnot(length(unique(PEAKS)) == 1L)
-keep(WB, "fig-gradient")
+invisible(keep(WB, "fig-gradient"))
 
 GRAD <- WB |>
   select(Class, Cells, all_of(names(RECORDS))) |>
@@ -1182,7 +1182,7 @@ bins <- cut(dd, c(0, 100, 200, 300, 500, 800, 1200, Inf))
 CORR <- tibble(`Lag (m)` = levels(bins),
                `Residual correlation` = round(as.numeric(tapply(rr, bins, mean)), 3))
 
-keep(SWEEP, "fig-blocks")
+invisible(keep(SWEEP, "fig-blocks"))
 
 FIG_BLK <- ggplot(SWEEP_RAW, aes(factor(`Block side (m)`), Estimate)) +
   geom_hline(yintercept = 0, linetype = "22", colour = "grey40") +
@@ -1521,7 +1521,7 @@ pbins <- cut(dd, c(0, 25, 50, 75, 100, 150, 200, Inf))
 PCORR <- tibble(`Lag (m)` = levels(pbins),
                 `Residual correlation` = round(as.numeric(tapply(rr, pbins, mean)), 3)) |>
   filter(!is.na(`Residual correlation`))
-keep(PCORR, "fig-correlogram")
+invisible(keep(PCORR, "fig-correlogram"))
 
 ## Bin midpoints for plotting. cut() labels are "(a,b]", and the open final bin
 ## has no midpoint, so it is dropped rather than given an invented one.
@@ -1583,7 +1583,7 @@ PPB <- PPB_RAW |>
             Estimate = round(B_PROD[Term], 3),
             Interval = ci_txt(Lower, Upper),
             ` ` = ifelse(clears(Lower, Upper), "clears zero", "spans zero"))
-keep(PPB, "fig-interaction")
+invisible(keep(PPB, "fig-interaction"))
 
 ## The published likelihood's own interval, drawn beside the block intervals so
 ## the comparison the paper rests on is one figure rather than two tables.
