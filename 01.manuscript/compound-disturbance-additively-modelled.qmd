@@ -32,7 +32,7 @@ date: today
 format:
   docx:
     prefer-html: true
-    reference-doc: ../04.references/style-formal.docx
+    reference-doc: ../04.references/style-cjfr-submission.docx
     highlight-style: pygments
   html:
     page-layout: full
@@ -65,7 +65,7 @@ engine: knitr
 citeproc: true
 editor: visual
 bibliography: ../04.references/references-compound.bib
-csl: ../04.references/apa.csl
+csl: ../04.references/cjfr.csl
 df-print: kable
 ---
 
@@ -208,12 +208,11 @@ The Darkwoods Conservation Area lies in the southern Selkirk Mountains of southe
 
 ## How the beetle state is dated, and how precisely {#sec-dating}
 
-An association between a prior disturbance and a later one is only as good as the dating of the
-prior one, so it is worth being explicit about the instrument and its resolution. Studies of this
-kind normally say so: @kulakowski2006 date a nineteenth-century outbreak from coincident growth
-releases in surviving non-host trees, @meyer2016 reconstruct pre-attack stand structure by returning
-recently dead trees to the live tally, and @estabrook2025 discuss at length how the remeasurement
-interval of a forest inventory degrades its record of pre-fire condition.
+An association between a prior disturbance and a later one is only as good as the dating of the prior
+one. Studies of this kind normally say so: @kulakowski2006 date a nineteenth-century outbreak from
+growth releases in surviving non-host trees, @meyer2016 reconstruct pre-attack structure by returning
+recently dead trees to the live tally, and @estabrook2025 discuss how a forest inventory's
+remeasurement interval degrades its record of pre-fire condition.
 
 Here the dating instrument is the annual Landsat classification. There are
 `r length(ANN_ALL)` annual files, and attack in a given cell is the year of the first file that
@@ -271,11 +270,9 @@ was ever attacked across `r min(ANN_YEARS)` to `r max(ANN_YEARS)`, not when. Giv
 inside the window and a detection window of one to three years on either side of each observation
 that is not empty, that is the honest way to use these surfaces.
 
-The consequence is a limit on what can be asked, and it is worth stating before any result rather
-than after. **Nothing in this study turns on the beetle-to-fire interval**, which spans one to eleven
-years and is not resolved by these surfaces at anything finer than the window itself. The analysis
-asks whether a cell carried attack before the fire, not how long before, and a reader should not read
-the severity gradient of @sec-conditioning as a statement about timing.
+**Nothing in this study therefore turns on the beetle-to-fire interval**, which these surfaces do not
+resolve at anything finer than the window itself. The analysis asks whether a cell carried attack
+before the fire, not how long before.
 
 ## Local classified surfaces {#sec-local}
 
@@ -397,9 +394,8 @@ Over the terrain grid the survey holds `r format(AOS_ALL, big.mark = ",")` damag
 ## The datasets, mapped {#sec-maps}
 
 Everything the study analyses sits inside one small burn, and the three nested scales below are what
-that means in practice. The regional panel carries the international border because the burn lies
-about 20 km north of it, which matters for the provincial survey used as the independent record: the
-survey stops at the border, and so does any comparison drawn from it.
+that means in practice. The regional panel carries the international border because the provincial
+survey used as the independent record stops there, and so does any comparison drawn from it.
 
 ```{r}
 #| label: fig-location
@@ -609,11 +605,10 @@ fraction and the reason the panel width is stated rather than left to be inferre
 panel (a) is in BC Albers, an equal-area projection appropriate to the province. All three are
 bounded by a WGS 84 graticule.
 
-Panel (b) is the whole of the provenance problem in one frame. The dashed rectangle is the terrain
-grid, `r round(GRID_KM2, 0)` km^2^ of elevation, slope, aspect and wind. The solid violet rectangle
-is the footprint every disturbance raster shares, `r RECT_KM2` km^2^, and the fire perimeter inside
-it encloses `r round(PERIM_KM2, 2)` km^2^. The terrain is mapped across the wider landscape and the
-disturbance is mapped only in a rectangle drawn around the fire. @sec-provenance shows that the
+Panel (b) is the whole of the provenance problem in one frame: the terrain grid covers
+`r round(GRID_KM2, 0)` km^2^, every disturbance raster shares a footprint of `r RECT_KM2` km^2^, and
+the fire perimeter inside it encloses `r round(PERIM_KM2, 2)` km^2^. Terrain is mapped across the
+landscape and disturbance only in a rectangle drawn around the fire. @sec-provenance shows that the
 beetle surfaces stop tighter still.
 
 # The provenance of the beetle layers {#sec-provenance}
@@ -1224,12 +1219,11 @@ WEAKEST  <- SWEEP_RAW$`Block side (m)`[which.min(SWEEP_RAW$Lower)]
 WEAK_LO  <- min(SWEEP_RAW$Lower)
 ```
 
-**So the moderate-severity result is reported with its dependence stated.** It clears the interval
-at `r N_CLEAR` of the `r nrow(SWEEP)` block sizes tried, which is all of them, so the conclusion
-does not rest on a convenient choice of block. It is weakest at `r WEAKEST` m, where the lower bound
-sits at `r sprintf("%.3f", WEAK_LO)`, barely above zero on
-`r SWEEP$Blocks[SWEEP$"Block side (m)" == WEAKEST]` blocks. That is the honest edge of what this
-extent supports, and it is why the sweep is reported rather than a single interval.
+**So the moderate-severity result is reported with its dependence stated.** It clears the interval at
+all `r nrow(SWEEP)` block sizes tried, so the conclusion does not rest on a convenient choice of
+block, and it is weakest at `r WEAKEST` m where the lower bound sits at
+`r sprintf("%.3f", WEAK_LO)` on `r SWEEP$Blocks[SWEEP$"Block side (m)" == WEAKEST]` blocks. That is
+the honest edge of what this extent supports.
 
 The general point is not a robustness check that the study passed. It is the study's own subject
 matter arriving in its own inference: the extent that makes the compound-disturbance question
@@ -1344,12 +1338,11 @@ PP$Severity <- factor(
 stopifnot(!any(is.na(PP$Severity)))
 ```
 
-The shapefile holds `r format(N_RAW, big.mark = ",")` points. `r N_DROP` of them carry a species code
-outside the seven-species lookup the parent study used, which leaves
-`r format(N_SEED, big.mark = ",")`, and every one of those falls inside the plot windows. That
-settles a count that has been ambiguous across three documents: the two figures in circulation differ
-by a species filter and nothing else, and the third figure, `r format(3886, big.mark = ",")` in the
-published abstract, matches neither and is not reproduced by any filter tried here. The fit uses
+The shapefile holds `r format(N_RAW, big.mark = ",")` points, of which `r N_DROP` carry a species
+code outside the seven-species lookup the parent study used, leaving
+`r format(N_SEED, big.mark = ",")`, all inside the plot windows. The two counts in circulation
+therefore differ by a species filter and nothing else; a third, `r format(3886, big.mark = ",")` in
+the published abstract, matches neither and is reproduced by no filter tried here. The fit uses
 `r format(N_DATA, big.mark = ",")` data points against `r format(N_DUMMY, big.mark = ",")` quadrature
 points over `r sprintf("%.2f", WIN_HA)` ha.
 
@@ -1435,16 +1428,16 @@ suggests.
 
 **The grey-stage term is now adequately supported, and was not always.** The corrected union carries
 grey attack on `r format(GREY_Q, big.mark = ",")` of `r format(nrow(Q), big.mark = ",")` quadrature
-points, about `r round(100 * GREY_Q / nrow(Q))` per cent of the plot area. The layer it replaced,
-built by a value test the parent study later diagnosed as wrong, carried grey attack on seven
-30 m cells in the same plots [@murphy2026greyfix]. A coefficient reported at
-p < 10^-10^ in the first submission rested on those seven cells, and the corrected refit moved it to
-zero. That correction was made before publication and is to the parent study's credit; it is recorded
-here because it is the same failure mode this paper is about, caught one stage earlier.
+points. The layer it replaced, built by a value test the parent study later diagnosed as wrong,
+carried grey attack on seven 30 m cells in the same plots [@murphy2026greyfix]; a coefficient
+reported at p < 10^-10^ in the first submission rested on those seven cells and the corrected refit
+moved it to zero. That correction was made before publication and is to the parent study's credit,
+and is recorded here because it is the same failure mode this paper is about, caught one stage
+earlier.
 
-**Red attack is confined as sec-provenance describes.** It appears on
-`r format(RED_Q, big.mark = ",")` quadrature points and on none at all outside the classified
-severity classes, which is the narrower of the two clips arriving inside the model.
+**Red attack is confined as @sec-provenance describes**, appearing on
+`r format(RED_Q, big.mark = ",")` quadrature points and on none outside the classified severity
+classes, which is the narrower of the two clips arriving inside the model.
 
 ## The product term {#sec-ppproduct}
 
@@ -1689,28 +1682,27 @@ different in kind.
 
 ## What the study found {#sec-found}
 
-**Beetle and fire cannot be compared across the fire perimeter in this landscape, because the
-surfaces that would do it stop at the perimeter.** The annual classifications from which every local
-beetle surface descends carry nodata across almost all of the unburned forest, and they carried it
-before any classification that used them was run. The consequence is not a caveat. A contingency
-table built across the boundary reports beetle attack rising from a fraction of a per cent in
-unburned forest to a fifth at moderate severity, and that table measures the mask. An independent
-record that was never clipped, the provincial Aerial Overview Survey, finds attack outside the
-perimeter at a rate no lower than inside it.
+**Beetle and fire cannot be compared across the fire perimeter here, because the surfaces that would
+do it stop at the perimeter.** The annual classifications from which every local beetle surface
+descends carry nodata across almost all of the unburned forest, and carried it before any
+classification that used them was run. The consequence is not a caveat: a contingency table built
+across the boundary reports attack rising from a fraction of a per cent in unburned forest to a fifth
+at moderate severity, and measures the mask. The provincial Aerial Overview Survey, never clipped,
+finds attack outside the perimeter at a rate no lower than inside it.
 
 **Within the burn the severity gradient is real and narrow.** Three records that do not share a
 measurement pathway agree that attack peaks at moderate severity, and conditioning on lodgepole cover
 and elevation attenuates that peak by about two fifths without removing it. The fall at high severity
-is not supported in any specification. So the non-monotone shape is a claim these data carry at its
-peak and not at its fall, and the paper reports it that way.
+is not supported in any specification, so the non-monotone shape is a claim these data carry at its
+peak and not at its fall.
 
-**The beetle by fire interaction is not supported.** Fitted through the likelihood the parent study
-uses, it is emphatic: a likelihood ratio statistic of `r sprintf("%.1f", LR_STAT)` on `r LR_DF`
-degrees of freedom and three of four product terms excluding zero. Fitted with inference that
-accounts for the clustering of the seedling pattern, every product term spans zero at every block
-size tried. The estimates do not move. Only the intervals do, by a factor of
-`r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`, and that factor is the entire
-distance between a confirmed interaction and no interaction at all.
+**The beetle by fire interaction is not supported.** Through the likelihood the parent study uses it
+is emphatic: a likelihood ratio statistic of `r sprintf("%.1f", LR_STAT)` on `r LR_DF` degrees of
+freedom and three of four product terms excluding zero. Under inference accounting for the clustering
+of the seedling pattern, every product term spans zero at every block size tried. The estimates do
+not move; only the intervals do, by a factor of `r sprintf("%.1f", WIDEN$lo)` to
+`r sprintf("%.1f", WIDEN$hi)`, and that factor is the whole distance between a confirmed interaction
+and none.
 
 ## Why the third result is the general one {#sec-general}
 
@@ -1730,12 +1722,10 @@ the same paper, and the second invalidates the standard errors the first is repo
 residual correlogram of @fig-correlogram reaches the same verdict from inside the model, with dependence
 of `r PCORR$"Residual correlation"[1]` within 25 m.
 
-This is not an unusual error and it is not a careless one. Clustered point patterns are routinely
-fitted this way, and the software makes the Poisson path the path of least resistance. What makes it
-consequential here is the size of the correction. A misspecified likelihood does not usually move a
-coefficient; it moves the interval around it, and the interval is what the claim rests on. An
-interaction reported at p < 10^-16^ and an interaction that cannot be distinguished from zero are the
-same number with different error bars.
+This is not an unusual error and it is not a careless one: clustered point patterns are routinely
+fitted this way and the software makes the Poisson path the path of least resistance. What makes it
+consequential is the size of the correction. A misspecified likelihood does not usually move a
+coefficient, it moves the interval around it, and the interval is what the claim rests on.
 
 **The caution this implies is not new, and the more careful practice already exists.** Modelling
 conifer regeneration after a large mixed-severity fire, @donato2009 excluded from their candidate set
@@ -1752,26 +1742,24 @@ objection to one study that failed to.
 ## What the extent does to both questions {#sec-extent}
 
 Every result here is bounded by an extent chosen by a disturbance rather than by a design. The burn
-is about eight square kilometres and the regeneration plots total
-`r sprintf("%.1f", WIN_HA)` ha inside it. That is the ground on which beetle and fire co-occur at
-all, so it is not an arbitrary choice, but it is not a neutral one either.
+is about eight square kilometres and the regeneration plots total `r sprintf("%.1f", WIN_HA)` ha
+inside it: the ground on which beetle and fire co-occur at all, so not an arbitrary choice, but not a
+neutral one either.
 
-The consequences run in the same direction at both scales. Across the burn, lodgepole cover and
-elevation correlate at `r sprintf("%.2f", R_PL_EL)`, and the two cannot be separated: the companion
-study distinguishes them because 1,776 m of relief contains pine-poor ground at every height, and
-eight square kilometres does not [@murphy2026refugia]. Inside the burn the fitted elevation optimum
-lands at `r round(PEAK)` m, far below the range the clip spans, so an analyst working only here would
-report beetle attack rising with elevation without limit. The landscape-scale hump is not
-contradicted; it is out of view.
+The consequences run the same way at both scales. Across the burn, lodgepole cover and elevation
+correlate at `r sprintf("%.2f", R_PL_EL)` and cannot be separated, where the companion study
+distinguishes them because 1,776 m of relief contains pine-poor ground at every height
+[@murphy2026refugia]. The fitted elevation optimum lands at `r round(PEAK)` m, far below the range
+the clip spans, so an analyst working only here would report attack rising with elevation without
+limit; the landscape-scale hump is not contradicted but out of view.
 
 The same collision governs the inference. A block bootstrap needs blocks large enough to contain the
-dependence and numerous enough to resample, and at both scales the extent caps the first requirement
-before the second is comfortable. Across the burn a 500 m block holds most of the dependence and
-affords `r SWEEP$Blocks[SWEEP$"Block side (m)" == BLOCK_M]` blocks; 1 km would afford eight. Inside
-the plots the residual range demands 75 to 100 m and the plots afford `r PP_OK_TXT`.
-This is the paper's own subject matter arriving in its own
-methods: the extent that makes a compound-disturbance question askable is the extent that decides how
-firmly it can be answered, and the two pull against each other.
+dependence and numerous enough to resample, and at both scales the extent caps the first before the
+second is comfortable: a 500 m block holds most of the dependence across the burn and affords
+`r SWEEP$Blocks[SWEEP$"Block side (m)" == BLOCK_M]`, where 1 km would afford eight, and inside the
+plots the residual range demands 75 to 100 m and the plots afford `r PP_OK_TXT`. This is the paper's
+subject matter arriving in its own methods: the extent that makes a compound-disturbance question
+askable is the extent that decides how firmly it can be answered.
 
 ## Limitations {#sec-limits}
 
@@ -1784,54 +1772,42 @@ result reported clearly is more useful than a positive one reported without its 
 limitations below are set out in that spirit.
 
 **The interaction result is a null, and nulls have a floor.** Nothing here shows that beetle mortality
-and burn severity do not interact in their effect on regeneration. It shows that
-`r format(N_DATA, big.mark = ",")` seedlings across `r sprintf("%.1f", WIN_HA)` ha, arranged as
-clustered as this pattern is, cannot resolve a difference of differences across four
-severity-by-attack combinations. A larger or better distributed sample could return a different
-answer, and this study offers no estimate of how much larger.
+and burn severity do not interact. It shows that `r format(N_DATA, big.mark = ",")` seedlings across
+`r sprintf("%.1f", WIN_HA)` ha, clustered as this pattern is, cannot resolve a difference of
+differences across four severity-by-attack combinations. A larger or better distributed sample could
+return a different answer, and this study offers no estimate of how much larger.
 
-**Question A is answered in a reduced form.** The within-burn severity gradient is not the question
-the compound-disturbance literature asks, which is whether beetle-killed stands burn differently from
+**Question A is answered in a reduced form.** The within-burn gradient is not the question the
+compound-disturbance literature asks, which is whether beetle-killed stands burn differently from
 stands that were not attacked. Recovering that comparison means rebuilding the classification over
-the unclipped landscape from the Landsat archive, which is a reprocessing task and one that re-treads
-the parent study's published methods.
+the unclipped landscape, a reprocessing task that re-treads the parent study's published methods.
 
 **Two beetle surfaces disagree and only one is documented.** The corrected grey-stage union is
-preferred throughout because it is three times denser than the published red-stage surface, observed
-throughout the perimeter, and derived by a script that survives [@murphy2026greyfix]. The red-stage
-surface is a substitution for a layer, `mpb_red_na.tif`, that is absent from the parent repository and
-was searched for without success. Where the two surfaces are used together their agreement is
-reported and their disagreement is not smoothed over.
+preferred throughout: three times denser than the published red-stage surface, observed throughout
+the perimeter, and derived by a script that survives [@murphy2026greyfix]. The red-stage surface is a
+substitution for a layer absent from the parent repository and searched for without success.
 
 **The severity reference category is inherited, not chosen.** The published specification carries
-indicators for high and low severity, so moderate severity is pooled with unburned and unclassified
-ground into the reference. That pooled category is `r round(100 * REF_MOD / REF_N)` per cent moderate
-severity, which is the class carrying the most beetle attack. The specification is reproduced rather
-than repaired, because the object of the exercise was to test the published model rather than to
-replace it, but no fire coefficient reported here means quite what its label says.
+indicators for high and low severity only, so moderate severity is pooled with unburned and
+unclassified ground into a reference that is `r round(100 * REF_MOD / REF_N)` per cent moderate, the
+class carrying the most beetle attack. It is reproduced rather than repaired, because the object was
+to test the published model rather than replace it, but no fire coefficient here means quite what its
+label says.
 
-**The provincial survey is a coarse instrument.** It is used as an independent check on whether ground
-outside the perimeter carries beetle attack at all, which is a question it can answer, and not as a
-measurement of severity, which it cannot. Its polygons are drawn from an aircraft at a mapping scale
-far coarser than 30 m.
+**The provincial survey is a coarse instrument**, its polygons sketched from an aircraft at a mapping
+scale far coarser than 30 m. It is used only as a check on whether ground outside the perimeter
+carries attack at all, which it can answer, and not as a measurement of severity, which it cannot.
 
 ## What would settle the open questions {#sec-next}
 
-Three things, in descending order of value against cost.
-
-The interaction test should be repeated where the extent is not the binding constraint. The
-requirement is not a bigger fire but a regeneration sample distributed across enough independent
-blocks that a product term has something to resolve, which given the dependence range measured here
-means a plot network rather than three contiguous plots.
-
-The published point process results should be reported with intervals that respect the clustering.
-This is inexpensive: the estimates are unchanged and the machinery is the block bootstrap used here.
-It affects which main effects in the parent study's Table 12 survive, and on the evidence of
-@fig-interaction the answer is that two of them do.
-
-Recovering question A in its original form requires rebuilding the beetle classification over the
-unclipped landscape. That is worth doing only if the Landsat archive is being revisited for other
-reasons, and it should not be represented as an extension of this analysis.
+Three things, in descending order of value against cost. The interaction test should be repeated
+where extent is not the binding constraint, which given the dependence range measured here means a
+distributed plot network rather than three contiguous plots. The published point process results
+should be reported with intervals that respect the clustering, which is inexpensive because the
+estimates are unchanged, and which on the evidence of @fig-interaction leaves two main effects
+standing. And recovering question A in its original form requires rebuilding the beetle
+classification over the unclipped landscape, which is worth doing only if the Landsat archive is
+being revisited anyway.
 
 # Conclusions {#sec-conclusions}
 
@@ -1864,6 +1840,26 @@ counted clustered seedlings as independent observations. The honest summary of a
 interaction in this landscape is that it has not been demonstrated, that these data cannot
 demonstrate it, and that the confidence with which it can appear to have been demonstrated is the
 finding most worth carrying elsewhere.
+
+# Author statements {#sec-statements}
+
+**Author contribution statement.** SM: conceptualisation, methodology, software, formal analysis,
+data curation, writing (original draft), writing (review and editing), visualisation.
+
+**Competing interests statement.** The author is also an author of Murphy et al. (2026), the study
+re-analysed here, and declares no other competing interests.
+
+**Funding statement.** The author declares no specific funding for this work.
+
+**Data availability statement.** The raster surfaces analysed here are held by the parent study
+[@murphy2026] and are not redistributed with this manuscript. The corrected grey-stage package of
+2 June 2026 is documented in [@murphy2026greyfix]. The provincial Aerial Overview Survey is open
+under the Open Government Licence for British Columbia [@bcaos2026]. **The executable source
+document that produced every number, table and figure in this paper, together with the derived
+inputs needed to run it, will be deposited on acceptance and the identifier added here.**
+
+**Acknowledgements.** No generative artificial intelligence was used to produce the scientific
+content, the analysis or the results of this manuscript.
 
 # References
 

@@ -75,24 +75,23 @@ Measured against the current render on 5 August 2026.
 
 | Requirement | Limit | Manuscript | Status |
 |---|---|---|---|
-| Abstract | 200 words, all article types | 323 | **over by 123** |
-| Body, Introduction through end of Discussion | 6,000 words | 6,428 | **over by 428** |
-| References | 50 | 18 entries, 15 cited | ok, and room for more |
-| Tables and figures | no stated numeric cap; "all figures and tables should be necessary to support the text" | 17 tables, 2 figures | **needs rebalancing toward figures, and a supplementary split** |
-| Line numbering | required on all submissions | absent | **to add** |
-| Citation style | Harvard, in-text (author year), alphabetical, unnumbered, DOIs and hyperlinks included | APA | **to switch** |
-| Editable table format | Word or Excel, one data point per cell | rendered from code | **to check on the docx render** |
-| Language, spacing, layout | English or French, double-spaced, single column, page numbers, 8.5x11 or A4 | docx render exists | to verify |
+| Abstract | 200 words, all article types | 198 | ok |
+| Body, Introduction through end of Discussion | 6,000 words | 6,040 | **over by 40** |
+| References | 50 | 20 entries, all cited | ok, and room for more |
+| Tables and figures | no stated numeric cap; "all figures and tables should be necessary to support the text" | 12 tables, 6 figures | inside the comparator range; a supplementary split is still worth considering |
+| Line numbering | required on all submissions | present | ok, carried by the reference document |
+| Citation style | Harvard, in-text (author year), alphabetical, unnumbered, DOIs and hyperlinks included | `cjfr.csl` | ok |
+| Double-spaced, single column, page numbers | required | `style-cjfr-submission.docx` | ok |
+| Author statements | contribution, competing interests, funding, data availability | all four present | data availability is provisional pending the deposit decision |
+| Editable table format | Word or Excel, one data point per cell | rendered from code | **verify in the docx** |
+| Code in the submitted file | not addressed by the guidelines | 25 chunks echoed | **author decision** |
 
-**Updated 5 August 2026, after the comparator survey.** The body was 5,323 words when this table was
-first written and is now 6,428, because integrating the survey's recommendations added a dating
-section, a Donato precedent in the Discussion, an interaction-register passage in the Introduction
-and a framing paragraph on negative results. That is the right content and it puts the manuscript
-over the limit. Roughly 430 words must come out, and the guidelines warn that "manuscripts that are
-considered too long will be returned to the author for shortening before peer review". The
-Introduction still needs to grow, so the reduction has to come from elsewhere: the three analysis
-sections carry the most compressible prose, and several table captions are doing work the text
-repeats.
+**Updated 5 August 2026, second pass.** The body peaked at 6,696 words after the Introduction was
+rebuilt and the comparator recommendations integrated, and was brought to 6,040 by compressing the
+analysis sections, the maps discussion, the dating section and the Discussion. The word counted is
+Introduction through the end of the Discussion, which is what the guidelines specify; it is still 40 over, and the Conclusions add a further 315 on top if an editor counts them.
+The guidelines allow that "exceptions on length are made depending on topic", so this is a small
+overrun to argue rather than a compliance failure, but it is an overrun and the table says so.
 
 ## Required statements, none of which the manuscript currently carries
 
