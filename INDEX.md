@@ -177,7 +177,14 @@ No raster is stored in this repository. All are read at render time.
     from `mpb_grey_corrected.tif`. The two differ where it matters: the grey main effect is +0.609 at
     p = 5e-11 in the superseded fit and -0.0007 at p = 0.99 in the canonical one. Refitting against
     the wrong baseline would produce a large difference and invite reporting it as a finding.
-16. **`glm` resolves `weights` in the formula's environment, not in the calling function's.** A
+16. **A map's scale is derived from its extent, never the other way round.** `st_bbox` returns a
+    named vector, and building `c(xmin = b[["xmin"]] - hw)` from it without dropping the names
+    produces `xmin.xmin`; the later lookup returns `NA`, and `coord_sf` falls back silently to the
+    data extent while the subtitle goes on claiming the requested ratio. Both map panels were framed
+    wrong and one carried a false 1:250 000 before this was caught. `box_at()` now derives the extent
+    from the target ratio and asserts the width it produced, so a panel cannot claim a scale it is
+    not drawn at.
+17. **`glm` resolves `weights` in the formula's environment, not in the calling function's.** A
     formula defined at top level carries the global environment, so a weight vector local to a
     bootstrap function is invisible and every fit errors. Wrapped in `try` inside a loop this is
     silent and returns an all-`NA` interval. Keep the weight as a column of the frame and pass it by
@@ -208,7 +215,8 @@ No raster is stored in this repository. All are read at render time.
   article, free to publish. The abstract must fall from 323 words to 200, the sixteen tables need a
   main and supplementary split, the citation style must go from APA to Harvard using the
   `04.references/cjfr.csl` already downloaded, and line numbering must be added. The body is 5,323
-  words against a 6,000 limit and 13 references against 50, so length is not a problem. Full detail
+  words against a 6,000 limit and 13 references against 50, so length is not a problem. The float
+  count is now 16 tables and 2 figures. Full detail
   and the compliance table are in `05.tasks/CJFR-GUIDELINES-VERIFIED-2026-08-05.md`; the workplan is
   in `05.tasks/progress.md`.
 - **`cdnsciencepub.com` returns 403 to every automated fetch.** The guidelines were read through a

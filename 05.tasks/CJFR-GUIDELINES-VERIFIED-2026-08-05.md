@@ -78,7 +78,7 @@ Measured against the current render on 5 August 2026.
 | Abstract | 200 words, all article types | 323 | **over by 123** |
 | Body, Introduction through end of Discussion | 6,000 words | 5,323 | ok, 677 to spare |
 | References | 50 | 13 | ok |
-| Tables and figures | no stated numeric cap; "all figures and tables should be necessary to support the text" | 16 tables, 1 figure | **needs a main and supplementary split** |
+| Tables and figures | no stated numeric cap; "all figures and tables should be necessary to support the text" | 16 tables, 2 figures | **needs a main and supplementary split** |
 | Line numbering | required on all submissions | absent | **to add** |
 | Citation style | Harvard, in-text (author year), alphabetical, unnumbered, DOIs and hyperlinks included | APA | **to switch** |
 | Editable table format | Word or Excel, one data point per cell | rendered from code | **to check on the docx render** |

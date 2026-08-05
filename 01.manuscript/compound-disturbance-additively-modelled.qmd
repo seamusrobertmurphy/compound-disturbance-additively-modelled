@@ -87,7 +87,7 @@ df-print: kable
 ## patchwork is used only through its `+` and `/` operators in fig-mask, so it
 ## looks unused to a search for function calls. Removing it breaks the figure.
 pkgs <- c("terra", "sf", "knitr", "kableExtra", "ggplot2", "dplyr",
-          "tibble", "tidyterra", "patchwork")
+          "tibble", "tidyterra", "patchwork", "ggspatial", "rnaturalearth")
 invisible(lapply(pkgs, function(p) library(p, character.only = TRUE)))
 ## Only what the YAML `execute:` block cannot express. echo, message, warning,
 ## error and comment are already set there; restating them here would let this
@@ -327,6 +327,191 @@ aos   <- project(aos, crs(G))
 
 Over the terrain grid the survey holds `r format(AOS_ALL, big.mark = ",")` damage polygons of all agents and years, of which `r AOS_N` are mountain pine beetle within the `r min(OUTBREAK)` to `r max(OUTBREAK)` outbreak window used here.
 
+## The datasets, mapped {#sec-maps}
+
+Everything the study analyses sits inside one small burn, and the three nested scales below are what
+that means in practice. The regional panel carries the international border because the burn lies
+about 20 km north of it, which matters for the provincial survey used as the independent record: the
+survey stops at the border, and so does any comparison drawn from it.
+
+```{r}
+#| label: fig-location
+#| echo: true
+#| fig-cap: "The study area at three nested scales. (a) Regional setting, with the Canada and United States border and provincial and state boundaries. (b) The terrain grid, the rectangle shared by every disturbance raster, and the fire perimeter inside it. (c) The burn itself with its classified severity and the three four-hectare regeneration plots that carry the point pattern of @sec-interaction. Each panel is drawn to the stated representative fraction at the reproduction width given in the text, carries a true-north arrow, and is bounded by a WGS 84 graticule labelled on all four sides."
+#| fig-width: 10.5
+#| fig-height: 4.6
+
+## A map declares its scale as a ratio. The ratio is chosen first and the panel's
+## ground extent is derived from it, so each panel is drawn to exactly the scale
+## it claims. Deriving the ratio the other way, from whatever extent the data
+## happened to occupy, gives an unroundable number that then gets snapped to a
+## conventional one and is wrong by up to half an order of magnitude.
+IN_M     <- 0.0254
+PANEL_IN <- 2.7                      # drawn width of one panel, inches
+RF_REG   <- 1e7                      # (a) regional
+RF_AREA  <- 2.5e5                    # (b) study area
+RF_BURN  <- 1e5                      # (c) the burn
+rf_txt   <- function(rf) paste0("1:", formatC(rf, format = "d", big.mark = " "))
+crs_txt  <- function(rf, epsg, nm) paste0(rf_txt(rf), "   ·   ", nm, " (EPSG:", epsg, ")")
+
+## Extent centred on x that renders at exactly `rf`.
+box_at <- function(x, rf, aspect = 0.86, panel_in = PANEL_IN) {
+  b <- st_bbox(x)
+  ## [[ ]] drops the bbox names. Keeping them makes c(xmin = ...) build a name
+  ## like "xmin.xmin", the lookup in lims() then returns NA, and coord_sf falls
+  ## back to the data extent without complaining while the subtitle goes on
+  ## claiming the requested scale. This was caught by the assertion below.
+  cx <- (b[["xmin"]] + b[["xmax"]]) / 2
+  cy <- (b[["ymin"]] + b[["ymax"]]) / 2
+  hw <- rf * panel_in * IN_M / 2
+  out <- c(xmin = cx - hw, xmax = cx + hw, ymin = cy - hw * aspect, ymax = cy + hw * aspect)
+  stopifnot(all(is.finite(out)),
+            isTRUE(all.equal(unname(out[["xmax"]] - out[["xmin"]]), rf * panel_in * IN_M)))
+  out
+}
+lims   <- function(b) list(x = c(b[["xmin"]], b[["xmax"]]), y = c(b[["ymin"]], b[["ymax"]]))
+ext_sf <- function(r) {
+  e <- as.vector(ext(r))
+  st_as_sfc(st_bbox(c(xmin = e[["xmin"]], xmax = e[["xmax"]],
+                      ymin = e[["ymin"]], ymax = e[["ymax"]]), crs = st_crs(crs(r))))
+}
+
+## The three regeneration plots, read once here and reused by sec-interaction.
+PLOT_SF <- do.call(rbind, lapply(1:3, function(i)
+  st_transform(st_read(dpath(sprintf("plot_locations/Plot%d.shp", i)), quiet = TRUE)["geometry"],
+               st_crs(G))))
+
+## Natural Earth ships its own data, so this is a local read rather than a
+## network call, and the render stays self-contained.
+NE_COUNTRY <- ne_countries(scale = "large", returnclass = "sf",
+                           country = c("Canada", "United States of America"))
+NE_STATE   <- ne_states(returnclass = "sf",
+                        country = c("Canada", "United States of America"))
+
+MAP_THEME <- theme(
+  panel.background = element_rect(fill = "white", colour = NA),
+  panel.border = element_rect(fill = NA, colour = "grey20", linewidth = 0.5),
+  panel.grid.major = element_line(colour = "grey82", linewidth = 0.2),
+  axis.title = element_blank(), axis.text = element_text(size = 5.6),
+  plot.title = element_text(face = "bold", size = 9),
+  plot.subtitle = element_text(size = 6.2, colour = "grey30"),
+  legend.position = "bottom", legend.box = "horizontal",
+  legend.title = element_text(size = 6.2), legend.text = element_text(size = 6),
+  legend.key.size = unit(8, "pt"), legend.margin = margin(t = 0))
+
+## True north, not grid north. At this longitude inside zone 11N they differ by
+## under a degree, but the distinction is free to state correctly.
+NORTH <- annotation_north_arrow(
+  location = "tr", which_north = "true",
+  height = unit(0.8, "cm"), width = unit(0.6, "cm"),
+  pad_x = unit(0.1, "cm"), pad_y = unit(0.1, "cm"),
+  style = north_arrow_orienteering(text_size = 5.5))
+
+ALBERS <- "EPSG:3005"
+SITE   <- st_geometry(st_centroid(st_union(st_transform(st_as_sf(per), ALBERS))))
+B_REG  <- box_at(SITE, RF_REG)
+B_AREA <- box_at(ext_sf(red), RF_AREA)
+B_BURN <- box_at(st_geometry(st_as_sf(per)), RF_BURN)
+
+## The study-area panel's own footprint, drawn on the regional panel.
+AREA_ON_REG <- st_transform(
+  st_as_sfc(st_bbox(c(xmin = B_AREA[["xmin"]], xmax = B_AREA[["xmax"]],
+                      ymin = B_AREA[["ymin"]], ymax = B_AREA[["ymax"]]),
+                    crs = st_crs(G))), ALBERS)
+at_frac <- function(b, fx, fy) c(b[["xmin"]] + fx * (b[["xmax"]] - b[["xmin"]]),
+                                 b[["ymin"]] + fy * (b[["ymax"]] - b[["ymin"]]))
+lab_ca <- at_frac(B_REG, 0.05, 0.93); lab_us <- at_frac(B_REG, 0.05, 0.10)
+
+p_reg <- ggplot() +
+  geom_sf(data = st_transform(NE_COUNTRY, ALBERS), fill = "grey95", colour = NA) +
+  geom_sf(data = st_transform(NE_STATE, ALBERS), fill = NA, colour = "grey75", linewidth = 0.2) +
+  geom_sf(data = st_transform(NE_COUNTRY, ALBERS), fill = NA, colour = "grey15", linewidth = 0.6) +
+  geom_sf(data = AREA_ON_REG, fill = NA, colour = "#b2182b", linewidth = 0.6) +
+  annotate("text", x = lab_ca[1], y = lab_ca[2], label = "CANADA", hjust = 0,
+           size = 2.4, colour = "grey25", fontface = "bold") +
+  annotate("text", x = lab_us[1], y = lab_us[2], label = "UNITED STATES", hjust = 0,
+           size = 2.4, colour = "grey25", fontface = "bold") +
+  coord_sf(xlim = lims(B_REG)$x, ylim = lims(B_REG)$y, datum = st_crs(4326),
+           expand = FALSE, label_axes = "ENEN") +
+  NORTH +
+  labs(title = "(a) Regional setting",
+       subtitle = crs_txt(RF_REG, 3005, "BC Albers")) +
+  MAP_THEME
+
+ELEV <- G; ELEV[ELEV < 0] <- NA
+FOOT_SF <- rbind(
+  st_sf(Layer = "Terrain grid",        geometry = ext_sf(G)),
+  st_sf(Layer = "Disturbance rasters", geometry = ext_sf(red)),
+  st_sf(Layer = "Fire perimeter",      geometry = st_geometry(st_as_sf(per))))
+FOOT_SF$Layer <- factor(FOOT_SF$Layer, levels = c("Terrain grid", "Disturbance rasters",
+                                                  "Fire perimeter"))
+
+p_area <- ggplot() +
+  geom_spatraster(data = ELEV) +
+  scale_fill_gradientn(colours = terrain.colors(64, rev = TRUE), na.value = "white",
+                       name = "Elevation (m)", breaks = c(1000, 1500, 2000, 2500),
+                       guide = guide_colourbar(barwidth = unit(52, "pt"),
+                                               barheight = unit(4.5, "pt"),
+                                               title.position = "top", order = 1)) +
+  geom_sf(data = FOOT_SF, aes(colour = Layer, linewidth = Layer, linetype = Layer), fill = NA) +
+  scale_colour_manual(values = c("Terrain grid" = "grey30",
+                                 "Disturbance rasters" = "#7b3294",
+                                 "Fire perimeter" = "#b2182b"), name = NULL) +
+  ## linewidth and linetype key off the same factor as colour, so their guides
+  ## would repeat the same three rows. Suppress them and carry both into the
+  ## colour key.
+  scale_linewidth_manual(values = c(0.35, 0.55, 0.7), guide = "none") +
+  scale_linetype_manual(values = c("22", "solid", "solid"), guide = "none") +
+  coord_sf(xlim = lims(B_AREA)$x, ylim = lims(B_AREA)$y, datum = st_crs(4326),
+           expand = FALSE, label_axes = "ENEN") +
+  NORTH +
+  guides(colour = guide_legend(order = 2,
+    override.aes = list(fill = NA, linewidth = c(0.35, 0.55, 0.7),
+                        linetype = c("22", "solid", "solid")))) +
+  labs(title = "(b) Study area and dataset footprints",
+       subtitle = crs_txt(RF_AREA, 32611, "UTM zone 11N")) +
+  MAP_THEME
+
+SEV_MAP <- sev
+values(SEV_MAP) <- factor(sev_label(vals(sev)), levels = SEV_LEVELS)
+
+p_burn <- ggplot() +
+  geom_spatraster(data = SEV_MAP) +
+  scale_fill_manual(values = setNames(c("#fddbc7", "#ef8a62", "#67001f"), SEV_LEVELS),
+                    na.value = "white", na.translate = FALSE, name = "Burn severity",
+                    guide = guide_legend(order = 1, nrow = 1)) +
+  geom_sf(data = st_as_sf(per), fill = NA, colour = "grey15", linewidth = 0.5) +
+  geom_sf(data = PLOT_SF, aes(colour = "Regeneration plots"), fill = NA, linewidth = 0.6) +
+  scale_colour_manual(values = c("Regeneration plots" = "#1a9850"), name = NULL,
+                      guide = guide_legend(order = 2, override.aes = list(fill = NA))) +
+  coord_sf(xlim = lims(B_BURN)$x, ylim = lims(B_BURN)$y, datum = st_crs(4326),
+           expand = FALSE, label_axes = "ENEN") +
+  NORTH +
+  labs(title = "(c) The burn and the plots",
+       subtitle = crs_txt(RF_BURN, 32611, "UTM zone 11N")) +
+  MAP_THEME
+
+FIG_LOC  <- p_reg + p_area + p_burn
+LOC_PATH <- file.path("..", "03.outputs", "PNG", "fig-location.png")
+ggsave(LOC_PATH, FIG_LOC, width = 10.5, height = 4.6, dpi = 300, bg = "white")
+knitr::include_graphics(LOC_PATH)
+```
+
+The scales are `r rf_txt(RF_REG)`, `r rf_txt(RF_AREA)` and `r rf_txt(RF_BURN)`, each exact at a
+panel `r PANEL_IN` inches wide, which is the width the three panels are drawn at in a figure
+`r 10.5` inches across. Reproduced at any other width the ratios change in proportion, which is the
+ordinary caveat on a printed representative fraction and the reason the panel width is stated rather
+than left to be inferred. Panels (b) and (c) are in the UTM zone 11N grid the analysis works in;
+panel (a) is in BC Albers, an equal-area projection appropriate to the province. All three are
+bounded by a WGS 84 graticule.
+
+Panel (b) is the whole of the provenance problem in one frame. The dashed rectangle is the terrain
+grid, `r round(GRID_KM2, 0)` km^2^ of elevation, slope, aspect and wind. The solid violet rectangle
+is the footprint every disturbance raster shares, `r RECT_KM2` km^2^, and the fire perimeter inside
+it encloses `r round(PERIM_KM2, 2)` km^2^. The terrain is mapped across the wider landscape and the
+disturbance is mapped only in a rectangle drawn around the fire. @sec-provenance shows that the
+beetle surfaces stop tighter still.
+
 # The provenance of the beetle layers {#sec-provenance}
 
 The scoping for this study reported a contingency table in which beetle red attack rose from near
@@ -497,11 +682,18 @@ the extent of the file, not about the forest.
 ```{r}
 #| label: fig-mask
 #| echo: true
-#| fig-cap: "The clip, mapped. Top left, the published red-stage surface, which stops at the classified burn. Top right, the corrected grey-stage union, which reaches the fire perimeter and stops there. Bottom left, the burn severity classes. Bottom right, the independent Aerial Overview Survey, which does not stop at anything. The unburned ground in the two upper panels is empty because it was never observed, not because it was never attacked."
+#| fig-cap: "The clip, mapped, at 1:50 000 in UTM zone 11N (EPSG:32611) with a WGS 84 graticule labelled on all four sides. Top left, the published red-stage surface, which stops at the classified burn. Top right, the corrected grey-stage union, which reaches the fire perimeter and stops there. Bottom left, the burn severity classes. Bottom right, the independent Aerial Overview Survey, which does not stop at anything. The unburned ground in the two upper panels is empty because it was never observed, not because it was never attacked."
 #| fig-width: 9
 #| fig-height: 9.6
 
 perim_sf <- st_as_sf(per)
+
+## These four panels are one map product at one scale, so the extent is derived
+## from the ratio exactly as in fig-location. The aspect is portrait because the
+## burn is, and because the 2 x 2 layout gives each panel a tall box.
+RF_MASK    <- 5e4
+PANEL_MASK <- 3.6                    # drawn width of one of the four panels, inches
+B_MASK <- box_at(st_geometry(perim_sf), RF_MASK, aspect = 1.15, panel_in = PANEL_MASK)
 
 ## Relabel each surface from its raw codes so the legends carry meaning rather
 ## than integers. Cells shown white are outside the fire perimeter entirely.
@@ -518,9 +710,25 @@ panel <- function(r, title, pal) {
                       na.translate = FALSE, drop = FALSE) +
     guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
     labs(title = title) +
-    coord_sf(expand = FALSE) +
-    theme(axis.text = element_blank(), axis.ticks = element_blank(),
-          panel.grid = element_blank(),
+    ## Same graticule furniture as fig-location: WGS 84 datum, coordinates on
+    ## all four sides, true north, and an extent derived from the scale so the
+    ## ratio in the caption is the ratio drawn. The four panels share one extent
+    ## and one projection, so scale and CRS are stated once in the caption
+    ## rather than repeated on each of the four.
+    ## Breaks are set explicitly because these panels are narrow and portrait;
+    ## the default breaks put six longitude labels along a 4 km axis and they
+    ## overprint each other.
+    scale_x_continuous(breaks = seq(-117, -116, by = 0.02)) +
+    scale_y_continuous(breaks = seq(49, 49.4, by = 0.01)) +
+    coord_sf(xlim = lims(B_MASK)$x, ylim = lims(B_MASK)$y, expand = FALSE,
+             datum = st_crs(4326), label_axes = "ENEN") +
+    annotation_north_arrow(location = "tr", which_north = "true",
+                           height = unit(0.7, "cm"), width = unit(0.52, "cm"),
+                           pad_x = unit(0.08, "cm"), pad_y = unit(0.08, "cm"),
+                           style = north_arrow_orienteering(text_size = 5)) +
+    theme(axis.text = element_text(size = 5.2), axis.title = element_blank(),
+          panel.border = element_rect(fill = NA, colour = "grey20", linewidth = 0.4),
+          panel.grid.major = element_line(colour = "grey85", linewidth = 0.18),
           plot.title = element_text(face = "bold", size = 9, hjust = 0.5),
           legend.position = "bottom", legend.key.size = unit(9, "pt"),
           legend.text = element_text(size = 7),
@@ -910,9 +1118,9 @@ term and not a difference of setup.
 #| label: ppframe
 #| echo: true
 
-PLOTS <- lapply(1:3, function(i)
-  st_transform(st_read(dpath(sprintf("plot_locations/Plot%d.shp", i)), quiet = TRUE), 32611))
-WIN <- st_union(do.call(rbind, lapply(PLOTS, function(p) p["geometry"])))
+## PLOT_SF was read for fig-location; reading the three shapefiles a second time
+## here would risk the two copies drifting apart.
+WIN <- st_union(PLOT_SF)
 WIN_HA <- as.numeric(st_area(WIN)) / 1e4
 
 ## The seedling frame. Three counts are in circulation for this point pattern

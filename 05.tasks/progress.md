@@ -333,6 +333,40 @@ search for the second returns a different item of the same name.
 **Render time roughly doubled**, from about 90 seconds to about 3 minutes 20, all of it the new block
 bootstrap. Acceptable, and cheaper than moving the analysis out of the document.
 
+### Maps of the datasets (5 August 2026)
+
+The manuscript carried one figure and no locator map. Added `fig-location`, three nested panels in
+`sec-maps`: the regional setting with the Canada and United States border at 1:10 000 000 in BC
+Albers, the terrain grid and disturbance-raster footprints at 1:250 000, and the burn with its
+severity classes and the three regeneration plots at 1:100 000. `fig-mask` gained the same
+furniture at 1:50 000. Both carry a true-north arrow, an explicit CRS, and a WGS 84 graticule
+labelled on all four sides.
+
+**Scale is declared as a representative fraction, and the extent is derived from it rather than the
+other way round.** The author's instruction was that a bar labelled in kilometres is not how a map
+states its scale. Deriving the ratio from whatever extent the data happened to occupy gives an
+unroundable number that then has to be snapped to a conventional one, and snapping in log space was
+wrong by 46 per cent on the regional panel. `box_at()` now takes the target ratio and the panel's
+reproduction width and returns the extent that renders at exactly that ratio.
+
+**A bug that put a false scale on a map, which is the worst kind.** `st_bbox` returns a named
+vector. Building `c(xmin = b["xmin"] - hw)` from it without dropping the names produces `xmin.xmin`,
+so the later lookup returned `NA`, and `coord_sf` fell back silently to the data extent while the
+subtitle went on claiming the requested ratio. Both panels were framed wrong and the study-area
+panel was captioned 1:250 000 while drawn at roughly 1:170 000. `box_at()` now asserts the width it
+produced against the width the ratio demands, so a panel cannot claim a scale it is not drawn at.
+This is trap 16 in `INDEX.md`.
+
+Two smaller things. `ext(r)$xmin` returns `NA` on a `SpatExtent` and silently builds a degenerate
+polygon; use `as.vector(ext(r))`. And keying linewidth and linetype to the same factor as colour
+gives three identical legends, so those two scales are suppressed and carried into the colour key
+by `override.aes`.
+
+`rnaturalearth` and `ggspatial` are added to the setup chunk. Natural Earth ships its own data, so
+the borders are a local read and the render stays self-contained with no network call. The three
+plot polygons are now read once in `sec-maps` as `PLOT_SF` and reused by `sec-interaction`, which
+previously read the same three shapefiles a second time.
+
 ## Next steps
 
 **Venue settled on 5 August 2026: Canadian Journal of Forest Research, as a Research article.**

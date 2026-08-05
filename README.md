@@ -38,6 +38,12 @@ Every figure and table below is reproduced from the current render, in the order
 | Moderate | 34 | 1383 | 99.8 |
 | High | 1 | 535 | 100.0 |
 
+### Figure 1
+
+![Figure 1](03.outputs/PNG/fig-location.png)
+
+*The study area at three nested scales. (a) Regional setting, with the Canada and United States border and provincial and state boundaries. (b) The terrain grid, the rectangle shared by every disturbance raster, and the fire perimeter inside it. (c) The burn itself with its classified severity and the three four-hectare regeneration plots that carry the point pattern of Section 5. Each panel is drawn to the stated representative fraction at the reproduction width given in the text, carries a true-north arrow, and is bounded by a WGS 84 graticule labelled on all four sides.*
+
 ### Table 3
 
 *Where each beetle surface stops, against the fire perimeter, on the native beetle grid. The annual rasters carry nodata over almost the whole area outside the perimeter, and the two derived surfaces inherit it.*
@@ -70,11 +76,11 @@ Every figure and table below is reproduced from the current render, in the order
 | Moderate | 1403 | 100.0 | 1403 | 34.6 | 20.7 | 40.6 | 1449 |
 | High | 553 | 100.0 | 553 | 27.7 | 12.1 | 33.1 | 1408 |
 
-### Figure 1
+### Figure 2
 
-![Figure 1](03.outputs/PNG/fig-mask.png)
+![Figure 2](03.outputs/PNG/fig-mask.png)
 
-*The clip, mapped. Top left, the published red-stage surface, which stops at the classified burn. Top right, the corrected grey-stage union, which reaches the fire perimeter and stops there. Bottom left, the burn severity classes. Bottom right, the independent Aerial Overview Survey, which does not stop at anything. The unburned ground in the two upper panels is empty because it was never observed, not because it was never attacked.*
+*The clip, mapped, at 1:50 000 in UTM zone 11N (EPSG:32611) with a WGS 84 graticule labelled on all four sides. Top left, the published red-stage surface, which stops at the classified burn. Top right, the corrected grey-stage union, which reaches the fire perimeter and stops there. Bottom left, the burn severity classes. Bottom right, the independent Aerial Overview Survey, which does not stop at anything. The unburned ground in the two upper panels is empty because it was never observed, not because it was never attacked.*
 
 ### Table 6
 
