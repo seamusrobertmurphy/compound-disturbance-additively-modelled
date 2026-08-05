@@ -177,13 +177,19 @@ No raster is stored in this repository. All are read at render time.
     from `mpb_grey_corrected.tif`. The two differ where it matters: the grey main effect is +0.609 at
     p = 5e-11 in the superseded fit and -0.0007 at p = 0.99 in the canonical one. Refitting against
     the wrong baseline would produce a large difference and invite reporting it as a finding.
-16. **A map's scale is derived from its extent, never the other way round.** `st_bbox` returns a
-    named vector, and building `c(xmin = b[["xmin"]] - hw)` from it without dropping the names
-    produces `xmin.xmin`; the later lookup returns `NA`, and `coord_sf` falls back silently to the
-    data extent while the subtitle goes on claiming the requested ratio. Both map panels were framed
-    wrong and one carried a false 1:250 000 before this was caught. `box_at()` now derives the extent
-    from the target ratio and asserts the width it produced, so a panel cannot claim a scale it is
-    not drawn at.
+16. **A map must never claim a scale it is not drawn at, and there are two ways to get this wrong.**
+    First, `st_bbox` returns a named vector, so building `c(xmin = b["xmin"] - hw)` from it produces
+    the name `xmin.xmin`; a `[` lookup then returns `NA` silently and `coord_sf` falls back to the
+    data extent while the subtitle goes on claiming the requested ratio. Both panels were framed
+    wrong this way and one carried a false 1:250 000 while drawn at about 1:170 000. Use `[[`, which
+    errors instead, and let `box_at()` assert the width it produced.
+    Second, and less obvious: the ratio is ground width over **drawn** width, and a panel is not
+    drawn at its share of the figure. Axis text, titles and legends take fixed space first and
+    `coord_sf` then locks the panel's aspect, which can shrink it again. A nominal `PANEL_IN` is an
+    assumption, and it was 1.3 per cent out. `panel_in_of()` computes the drawn width from the
+    gtable the way gtable itself resolves the layout, both figures are built twice, once at a guess
+    and once at the measurement, and a `stopifnot` requires the second pass to agree with the first
+    to within 0.5 per cent. **Do not reintroduce a hard-coded panel width.**
 17. **`glm` resolves `weights` in the formula's environment, not in the calling function's.** A
     formula defined at top level carries the global environment, so a weight vector local to a
     bootstrap function is invisible and every fit errors. Wrapped in `try` inside a loop this is

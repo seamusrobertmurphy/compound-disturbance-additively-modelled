@@ -347,7 +347,9 @@ survey stops at the border, and so does any comparison drawn from it.
 ## happened to occupy, gives an unroundable number that then gets snapped to a
 ## conventional one and is wrong by up to half an order of magnitude.
 IN_M     <- 0.0254
-PANEL_IN <- 2.7                      # drawn width of one panel, inches
+FIG_W    <- 10.5                     # saved figure size, inches
+FIG_H    <- 4.6
+PANEL_GUESS <- 2.7                   # starting guess only; the real width is measured below
 RF_REG   <- 1e7                      # (a) regional
 RF_AREA  <- 2.5e5                    # (b) study area
 RF_BURN  <- 1e5                      # (c) the burn
@@ -355,7 +357,7 @@ rf_txt   <- function(rf) paste0("1:", formatC(rf, format = "d", big.mark = " "))
 crs_txt  <- function(rf, epsg, nm) paste0(rf_txt(rf), "   ·   ", nm, " (EPSG:", epsg, ")")
 
 ## Extent centred on x that renders at exactly `rf`.
-box_at <- function(x, rf, aspect = 0.86, panel_in = PANEL_IN) {
+box_at <- function(x, rf, panel_in, aspect = 0.86) {
   b <- st_bbox(x)
   ## [[ ]] drops the bbox names. Keeping them makes c(xmin = ...) build a name
   ## like "xmin.xmin", the lookup in lims() then returns NA, and coord_sf falls
@@ -409,11 +411,34 @@ NORTH <- annotation_north_arrow(
 
 ALBERS <- "EPSG:3005"
 SITE   <- st_geometry(st_centroid(st_union(st_transform(st_as_sf(per), ALBERS))))
-B_REG  <- box_at(SITE, RF_REG)
-B_AREA <- box_at(ext_sf(red), RF_AREA)
-B_BURN <- box_at(st_geometry(st_as_sf(per)), RF_BURN)
+
+## The scale a map claims is its ground width over its *drawn* width, and a
+## panel is not drawn at its share of the figure: axis text, titles and legends
+## take fixed space first, and coord_sf then locks the panel's aspect, which can
+## shrink it further. Assuming the drawn width is how a map comes to carry a
+## ratio it is not drawn at. It is computed from the gtable instead, the same way
+## gtable resolves the layout, and the extents are rebuilt at the measured value.
+panel_in_of <- function(p, fig_w, fig_h) {
+  g  <- if (inherits(p, "gtable")) p else patchwork::patchworkGrob(p)
+  wt <- grid::unitType(g$widths); ht <- grid::unitType(g$heights)
+  fw <- sum(grid::convertWidth(g$widths[wt != "null"],   "in", valueOnly = TRUE))
+  fh <- sum(grid::convertHeight(g$heights[ht != "null"], "in", valueOnly = TRUE))
+  nw <- as.numeric(g$widths[wt == "null"]); nh <- as.numeric(g$heights[ht == "null"])
+  aw <- fig_w - fw; ah <- fig_h - fh
+  ## respect locks one null width unit to one null height unit in physical size,
+  ## so the panel block is the largest box of that shape that fits.
+  if (!is.null(g$respect) && !identical(g$respect, FALSE))
+    aw <- sum(nw) * min(aw / sum(nw), ah / sum(nh))
+  aw / length(nw)
+}
 
 ## The study-area panel's own footprint, drawn on the regional panel.
+build_maps <- function(panel_in) {
+
+B_REG  <- box_at(SITE, RF_REG,  panel_in)
+B_AREA <- box_at(ext_sf(red), RF_AREA, panel_in)
+B_BURN <- box_at(st_geometry(st_as_sf(per)), RF_BURN, panel_in)
+
 AREA_ON_REG <- st_transform(
   st_as_sfc(st_bbox(c(xmin = B_AREA[["xmin"]], xmax = B_AREA[["xmax"]],
                       ymin = B_AREA[["ymin"]], ymax = B_AREA[["ymax"]]),
@@ -491,17 +516,29 @@ p_burn <- ggplot() +
        subtitle = crs_txt(RF_BURN, 32611, "UTM zone 11N")) +
   MAP_THEME
 
-FIG_LOC  <- p_reg + p_area + p_burn
+  p_reg + p_area + p_burn
+}
+
+## Two passes. Build at the guess, measure what was drawn, rebuild at the
+## measurement. One pass converges because changing an extent by a per cent or
+## two does not change the width of the axis labels, and the assertion below is
+## what actually enforces that rather than the claim that it does.
+PANEL_IN <- panel_in_of(build_maps(PANEL_GUESS), FIG_W, FIG_H)
+FIG_LOC  <- build_maps(PANEL_IN)
+PANEL_CHECK <- panel_in_of(FIG_LOC, FIG_W, FIG_H)
+stopifnot(abs(PANEL_CHECK / PANEL_IN - 1) < 0.005)
+
 LOC_PATH <- file.path("..", "03.outputs", "PNG", "fig-location.png")
-ggsave(LOC_PATH, FIG_LOC, width = 10.5, height = 4.6, dpi = 300, bg = "white")
+ggsave(LOC_PATH, FIG_LOC, width = FIG_W, height = FIG_H, dpi = 300, bg = "white")
 knitr::include_graphics(LOC_PATH)
 ```
 
 The scales are `r rf_txt(RF_REG)`, `r rf_txt(RF_AREA)` and `r rf_txt(RF_BURN)`, each exact at a
-panel `r PANEL_IN` inches wide, which is the width the three panels are drawn at in a figure
-`r 10.5` inches across. Reproduced at any other width the ratios change in proportion, which is the
-ordinary caveat on a printed representative fraction and the reason the panel width is stated rather
-than left to be inferred. Panels (b) and (c) are in the UTM zone 11N grid the analysis works in;
+panel `r sprintf("%.2f", PANEL_IN)` inches wide. That width is measured off the assembled figure
+rather than assumed, and the extents are then rebuilt at it, so the ratios printed on the panels are
+the ratios the panels are drawn to and not the ratios they were asked for. Reproduced at any other
+width the ratios change in proportion, which is the ordinary caveat on a printed representative
+fraction and the reason the panel width is stated rather than left to be inferred. Panels (b) and (c) are in the UTM zone 11N grid the analysis works in;
 panel (a) is in BC Albers, an equal-area projection appropriate to the province. All three are
 bounded by a WGS 84 graticule.
 
@@ -691,9 +728,9 @@ perim_sf <- st_as_sf(per)
 ## These four panels are one map product at one scale, so the extent is derived
 ## from the ratio exactly as in fig-location. The aspect is portrait because the
 ## burn is, and because the 2 x 2 layout gives each panel a tall box.
-RF_MASK    <- 5e4
-PANEL_MASK <- 3.6                    # drawn width of one of the four panels, inches
-B_MASK <- box_at(st_geometry(perim_sf), RF_MASK, aspect = 1.15, panel_in = PANEL_MASK)
+RF_MASK     <- 5e4
+MASK_W      <- 9; MASK_H <- 9.6      # saved figure size, inches
+MASK_GUESS  <- 3.6                   # starting guess; the drawn width is measured below
 
 ## Relabel each surface from its raw codes so the legends carry meaning rather
 ## than integers. Cells shown white are outside the fire perimeter entirely.
@@ -702,7 +739,7 @@ relabel <- function(r, from, to) {
   values(out) <- factor(to[match(vals(r), from)], levels = to)
   out
 }
-panel <- function(r, title, pal) {
+panel <- function(r, title, pal, B) {
   ggplot() +
     geom_spatraster(data = r) +
     geom_sf(data = perim_sf, fill = NA, colour = "grey15", linewidth = 0.4) +
@@ -720,7 +757,7 @@ panel <- function(r, title, pal) {
     ## overprint each other.
     scale_x_continuous(breaks = seq(-117, -116, by = 0.02)) +
     scale_y_continuous(breaks = seq(49, 49.4, by = 0.01)) +
-    coord_sf(xlim = lims(B_MASK)$x, ylim = lims(B_MASK)$y, expand = FALSE,
+    coord_sf(xlim = lims(B)$x, ylim = lims(B)$y, expand = FALSE,
              datum = st_crs(4326), label_axes = "ENEN") +
     annotation_north_arrow(location = "tr", which_north = "true",
                            height = unit(0.7, "cm"), width = unit(0.52, "cm"),
@@ -742,28 +779,36 @@ SEV_ORDER <- c(UNCLASSED, SEV_LEVELS)
 sev_lab <- relabel(SEV, CODE_OF[SEV_ORDER], SEV_ORDER)
 
 ## Unobserved cells are shown as a class of their own rather than as absence.
-beetle_panel <- function(r, title, col) {
+beetle_panel <- function(r, title, col, B) {
   x <- r
   values(x) <- factor(ifelse(!OBS, "Not observed",
                       ifelse(vals(r) > 0, "Attack", "No attack")),
                       levels = c("Not observed", "No attack", "Attack"))
-  panel(x, title, c(`Not observed` = "white", `No attack` = "grey88", Attack = col))
+  panel(x, title, c(`Not observed` = "white", `No attack` = "grey88", Attack = col), B)
 }
 
-p1 <- beetle_panel(red,  "Red stage, as published", "#b2182b")
-p2 <- beetle_panel(grey, "Grey stage, corrected 2026-06-02", "#7b3294")
-p3 <- panel(sev_lab, "Burn severity classes",
-            setNames(c("grey70", "#fddbc7", "#ef8a62", "#67001f"), SEV_ORDER))
-p4 <- panel(relabel(A, c(0, 1), c("Not attacked", "Beetle attack")),
-            "Aerial Overview Survey, beetle",
-            c(`Not attacked` = "grey88", `Beetle attack` = "#2166ac"))
+## Same two-pass as fig-location: the ratio in the caption is ground width over
+## drawn width, so the drawn width is measured and the extent rebuilt at it.
+build_mask <- function(panel_in) {
+  B <- box_at(st_geometry(perim_sf), RF_MASK, panel_in, aspect = 1.15)
+  p1 <- beetle_panel(red,  "Red stage, as published", "#b2182b", B)
+  p2 <- beetle_panel(grey, "Grey stage, corrected 2026-06-02", "#7b3294", B)
+  p3 <- panel(sev_lab, "Burn severity classes",
+              setNames(c("grey70", "#fddbc7", "#ef8a62", "#67001f"), SEV_ORDER), B)
+  p4 <- panel(relabel(A, c(0, 1), c("Not attacked", "Beetle attack")),
+              "Aerial Overview Survey, beetle",
+              c(`Not attacked` = "grey88", `Beetle attack` = "#2166ac"), B)
+  (p1 + p2) / (p3 + p4)
+}
+PANEL_MASK <- panel_in_of(build_mask(MASK_GUESS), MASK_W, MASK_H)
 
 ## Rendered once. Printing FIG_MASK as well would draw the same four panels a
 ## second time on knitr's device; the chunk's fig-width, fig-height and dpi
 ## already match these arguments, so the embedded image is identical.
-FIG_MASK <- (p1 + p2) / (p3 + p4)
+FIG_MASK <- build_mask(PANEL_MASK)
+stopifnot(abs(panel_in_of(FIG_MASK, MASK_W, MASK_H) / PANEL_MASK - 1) < 0.005)
 FIG_PATH <- file.path("..", "03.outputs", "PNG", "fig-mask.png")
-ggsave(FIG_PATH, FIG_MASK, width = 9, height = 9.6, dpi = 300)
+ggsave(FIG_PATH, FIG_MASK, width = MASK_W, height = MASK_H, dpi = 300)
 knitr::include_graphics(FIG_PATH)
 ```
 

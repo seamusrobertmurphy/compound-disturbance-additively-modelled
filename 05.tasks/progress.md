@@ -357,6 +357,18 @@ panel was captioned 1:250 000 while drawn at roughly 1:170 000. `box_at()` now a
 produced against the width the ratio demands, so a panel cannot claim a scale it is not drawn at.
 This is trap 16 in `INDEX.md`.
 
+**And a second, deeper hole in the same place, found by asking how the first fix could still be
+wrong.** The assertion above checks that the *requested* extent is well formed. It says nothing
+about the width the panel is actually drawn at, and the ratio is ground width over drawn width. A
+panel is not drawn at its share of the figure: axis text, titles and legends take fixed space first,
+and `coord_sf` then locks the aspect and can shrink it again. Measuring the assembled figure showed
+the panels at 2.664 inches against the 2.7 assumed, so the printed ratios were 1.3 per cent
+optimistic. Small, but it was luck rather than verification. `panel_in_of()` now computes the drawn
+width from the gtable, resolving the null units the way gtable does and honouring `respect`, which
+is what locks the aspect. Both figures are built twice, once at a guess and once at the measured
+width, and a `stopifnot` requires the two to agree to 0.5 per cent. Validated independently against
+`coord_fixed(ratio = 1)`, which must give a square panel and does at three different figure shapes.
+
 Two smaller things. `ext(r)$xmin` returns `NA` on a `SpatExtent` and silently builds a degenerate
 polygon; use `as.vector(ext(r))`. And keying linewidth and linetype to the same factor as colour
 gives three identical legends, so those two scales are suppressed and carried into the colour key
