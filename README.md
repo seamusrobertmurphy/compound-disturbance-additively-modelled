@@ -6,7 +6,7 @@ Generated from the rendered manuscript by `03.outputs/build-readme.py`. Do not e
 
 ## Abstract
 
-Compound disturbance is routinely described as an interaction and routinely modelled as a sum. This study separates the two claims over a mountain pine beetle outbreak and the mixed-severity wildfire that followed it in the southern Selkirk Mountains of British Columbia, asking first whether the two agents are associated on the ground and second whether their effects on conifer regeneration multiply or merely add. The first result concerns the data rather than the forest. The annual beetle classifications from which every beetle surface in the parent study descends were clipped to the fire perimeter before any classification was run, so they carry nodata across almost all of the surrounding unburned forest, and the published red-attack surface is confined more tightly still. Read at face value they imply almost no beetle mortality around the fire. The provincial Aerial Overview Survey, an independent record that was never clipped, reports attack outside the perimeter at a rate no lower than inside it, so any burned against unburned contrast measures the clip. What survives is the gradient within the perimeter, where every severity class is equally exposed, and there three records sharing no common measurement pathway agree that attack peaks at moderate severity; conditioned on lodgepole cover and elevation that peak attenuates by about two fifths and still clears a spatial block bootstrap interval at every block size the extent can populate, while the fall at high severity is never supported. The second result is the general one. Refitting the parent study's point process model with the beetle by fire product term returns an emphatic interaction under the Poisson likelihood that model is fitted with, and no interaction at all under inference that accounts for the clustering the same study documents in its own figures. The coefficients are identical; the intervals differ by a factor of two to eight. Compound-disturbance interactions can be reported with a confidence that comes from the likelihood rather than from the data.
+Compound disturbance is routinely described as an interaction and routinely modelled as a sum. This study separates the two claims over a mountain pine beetle outbreak and the mixed-severity wildfire that followed it in the southern Selkirk Mountains of British Columbia. The first result concerns the data, not the forest. The annual classifications from which every beetle surface in the parent study descends were clipped to the fire perimeter before any classification was run, and an independent provincial survey that was never clipped records attack outside the perimeter at a rate no lower than inside it, so any burned against unburned contrast measures the clip. What survives is the gradient within the perimeter, where three records sharing no common measurement pathway agree that attack peaks at moderate severity, and that peak persists after conditioning on host cover and elevation. The second result is the general one. Refitting the parent study's point process model with the beetle by fire product term returns an emphatic interaction under the Poisson likelihood that model is fitted with, and none under inference accounting for the clustering the same study documents in its own figures. The coefficients are identical and only the intervals differ.
 
 ## Results
 
@@ -98,17 +98,13 @@ Every figure and table below is reproduced from the current render, in the order
 
 *The clip, mapped, at 1:50 000 in UTM zone 11N (EPSG:32611) with a WGS 84 graticule labelled on all four sides. Top left, the published red-stage surface, which stops at the classified burn. Top right, the corrected grey-stage union, which reaches the fire perimeter and stops there. Bottom left, the burn severity classes. Bottom right, the independent Aerial Overview Survey, which does not stop at anything. The unburned ground in the two upper panels is empty because it was never observed, not because it was never attacked.*
 
+### Figure 4
+
+![Figure 4](03.outputs/PNG/fig-gradient-2.png)
+
+*Beetle attack across burn severity within the fire perimeter, in the two local surfaces and in the independent survey. The three records share no common measurement pathway and all three peak at moderate severity. Point labels give the number of cells in each class.*
+
 ### Table 7
-
-*Beetle attack across burn severity within the fire perimeter, in the two local surfaces and in the independent survey. All three peak at moderate severity and fall at high.*
-
-| Class | Cells | Grey (%) | Red (%) | Survey (%) | Elevation (m) |
-| :--- | ---: | ---: | ---: | ---: | ---: |
-| Low | 2158 | 20.8 | 6.3 | 24.5 | 1367 |
-| Moderate | 1403 | 34.6 | 20.7 | 40.6 | 1449 |
-| High | 553 | 27.7 | 12.1 | 33.1 | 1408 |
-
-### Table 8
 
 *Attack, host cover and elevation by burn severity class, and the crude contrast between stands carrying lodgepole and stands without it.*
 
@@ -123,7 +119,7 @@ Every figure and table below is reproduced from the current render, in the order
 | Lodgepole absent | 1973 | 15.3 | 0.0 | 1258 |
 | Lodgepole present | 3440 | 35.3 | 31.3 | 1498 |
 
-### Table 9
+### Table 8
 
 *Burn severity coefficients on grey-stage attack, as log-odds against low severity, crude and then conditioned on host presence and elevation. Intervals are spatial block bootstrap percentiles at 500 m blocks. An interval that excludes zero is marked.*
 
@@ -144,7 +140,7 @@ Every figure and table below is reproduced from the current render, in the order
 | ec | 0.415 | [0.243, 0.649] | clears zero |  |
 | I(ec^2) | 0.023 | [-0.047, 0.120] |  |  |
 
-### Table 10
+### Table 9
 
 *The elevation term inside the burn, against the landscape-scale form the companion study reports. The quadratic term is negligible and its implied optimum falls far outside the elevation range the burn spans, so within this clip the relationship is monotone.*
 
@@ -156,32 +152,13 @@ Every figure and table below is reproduced from the current render, in the order
 | Implied optimum of the fitted quadratic | 503 m |
 | Landscape-scale optimum, companion study | about 1,430 m |
 
-### Table 11
+### Figure 6
 
-*The moderate-against-low severity coefficient under block bootstraps of increasing block size, with the number of blocks each affords. The estimate is fixed; only the interval changes. The extent caps the largest usable block, not the conclusion.*
+![Figure 6](03.outputs/PNG/fig-blocks-2.png)
 
-| Block side (m) | Blocks | Estimate | Interval |  |
-| ---: | ---: | ---: | :--- | :--- |
-| 300 | 74 | 0.416 | [0.077, 0.742] | clears zero |
-| 400 | 39 | 0.416 | [0.035, 0.767] | clears zero |
-| 500 | 27 | 0.416 | [0.101, 0.731] | clears zero |
-| 750 | 14 | 0.416 | [0.020, 0.747] | clears zero |
+*The moderate-against-low severity coefficient under block bootstraps of increasing block size. The estimate is fixed; only the interval changes, and the number of blocks each size affords is printed above it. The extent caps the largest usable block, not the conclusion.*
 
-### Table 12
-
-*Residual correlogram of the conditioned model. Dependence is strong within 100 m and has largely decayed by 500 m, which is the basis for the block sizes tried above.*
-
-| Lag (m) | Residual correlation |
-| :--- | ---: |
-| (0,100] | 0.394 |
-| (100,200] | 0.206 |
-| (200,300] | 0.101 |
-| (300,500] | 0.057 |
-| (500,800] | 0.049 |
-| (800,1.2e+03] | 0.020 |
-| (1.2e+03,Inf] | -0.055 |
-
-### Table 13
+### Table 10
 
 *The published additive trend, as reported by the parent study’s final refit and as recomputed here from the same rasters. The comparison is the licence for everything that follows: a product term added to a model that did not reproduce would test nothing.*
 
@@ -197,7 +174,7 @@ Every figure and table below is reproduced from the current render, in the order
 | Fire_H | 0.2071 | 0.2071 | 0 |
 | Fire_L | 0.3952 | 0.3952 | 0 |
 
-### Table 14
+### Table 11
 
 *Quadrature points inside the three plots, by burn severity class and beetle surface. The published fit’s reference category is the union of the two rows that carry no severity indicator, so it pools moderate severity with unburned and unclassified ground.*
 
@@ -208,7 +185,7 @@ Every figure and table below is reproduced from the current render, in the order
 | High | 288 | 2.88 | 68 | 54 |  |
 | Inside perimeter, unclassified | 118 | 1.18 | 31 | 0 | yes |
 
-### Table 15
+### Table 12
 
 *The additive trend as published, and the same trend with the four beetle by fire product terms added. Intervals are the naive Poisson intervals the published likelihood implies. On these the interaction is emphatic and three of the four product terms exclude zero.*
 
@@ -235,55 +212,14 @@ Every figure and table below is reproduced from the current render, in the order
 | MPB_R:Fire_H | 0.298 | [-0.046, 0.643] |  |  |
 | MPB_R:Fire_L | 0.939 | [0.667, 1.211] | excludes zero |  |
 
-### Table 16
+### Figure 8
 
-*Residual correlogram of the fit with product terms, over the quadrature points. Dependence is strong within one 30 m cell and has decayed by about 100 m, which sets the block sizes tried below.*
+![Figure 8](03.outputs/PNG/fig-correlogram-2.png)
 
-| Lag (m) | Residual correlation |
-| :--- | ---: |
-| (0,25] | 0.806 |
-| (25,50] | 0.585 |
-| (50,75] | 0.332 |
-| (75,100] | 0.073 |
-| (100,150] | -0.209 |
-| (150,200] | -0.342 |
-| (200,Inf] | -0.014 |
+*Residual dependence at the two scales the study works at. Left, the conditioned model of Section 4 across the burn, where dependence has largely decayed by 500 m. Right, the fit with product terms over the quadrature points inside the regeneration plots, where it has decayed by about 100 m. The two panels are the same obstacle two orders of magnitude apart, and each sets the block sizes tried at its own scale.*
 
-### Table 17
+### Figure 10
 
-*The four product terms and the main effects they modify, under a spatial block bootstrap across block sizes spanning the residual range. The estimates are fixed; only the intervals change. No product term excludes zero at any block size tried.*
+![Figure 10](03.outputs/PNG/fig-interaction-2.png)
 
-| Block side (m) | Blocks | Term | Estimate | Interval |  |
-| ---: | ---: | :--- | ---: | :--- | :--- |
-| 25 | 234 | MPB_G | 0.036 | [-0.383, 0.380] | spans zero |
-| MPB_R | -0.586 | [-1.080, -0.125] | clears zero |  |  |
-| Fire_H | -0.139 | [-0.522, 0.198] | spans zero |  |  |
-| Fire_L | 0.367 | [0.107, 0.650] | clears zero |  |  |
-| MPB_G:Fire_H | 0.574 | [-0.190, 1.337] | spans zero |  |  |
-| MPB_G:Fire_L | -0.714 | [-1.697, 0.391] | spans zero |  |  |
-| MPB_R:Fire_H | 0.298 | [-0.654, 1.054] | spans zero |  |  |
-| MPB_R:Fire_L | 0.939 | [-0.374, 1.840] | spans zero |  |  |
-| 50 | 70 | MPB_G | 0.036 | [-0.443, 0.611] | spans zero |
-| MPB_R | -0.586 | [-1.262, -0.083] | clears zero |  |  |
-| Fire_H | -0.139 | [-0.630, 0.383] | spans zero |  |  |
-| Fire_L | 0.367 | [0.073, 0.668] | clears zero |  |  |
-| MPB_G:Fire_H | 0.574 | [-0.194, 1.544] | spans zero |  |  |
-| MPB_G:Fire_L | -0.714 | [-1.959, 0.632] | spans zero |  |  |
-| MPB_R:Fire_H | 0.298 | [-0.938, 1.256] | spans zero |  |  |
-| MPB_R:Fire_L | 0.939 | [-0.669, 2.225] | spans zero |  |  |
-| 75 | 36 | MPB_G | 0.036 | [-0.441, 0.725] | spans zero |
-| MPB_R | -0.586 | [-1.218, -0.095] | clears zero |  |  |
-| Fire_H | -0.139 | [-0.568, 0.322] | spans zero |  |  |
-| Fire_L | 0.367 | [0.111, 0.655] | clears zero |  |  |
-| MPB_G:Fire_H | 0.574 | [-0.242, 1.282] | spans zero |  |  |
-| MPB_G:Fire_L | -0.714 | [-2.342, 0.509] | spans zero |  |  |
-| MPB_R:Fire_H | 0.298 | [-1.461, 1.209] | spans zero |  |  |
-| MPB_R:Fire_L | 0.939 | [-0.548, 2.300] | spans zero |  |  |
-| 100 | 27 | MPB_G | 0.036 | [-0.633, 0.731] | spans zero |
-| MPB_R | -0.586 | [-1.219, -0.027] | clears zero |  |  |
-| Fire_H | -0.139 | [-0.648, 0.659] | spans zero |  |  |
-| Fire_L | 0.367 | [0.001, 0.705] | clears zero |  |  |
-| MPB_G:Fire_H | 0.574 | [-0.314, 3.714] | spans zero |  |  |
-| MPB_G:Fire_L | -0.714 | [-1.703, 0.711] | spans zero |  |  |
-| MPB_R:Fire_H | 0.298 | [-3.857, 1.371] | spans zero |  |  |
-| MPB_R:Fire_L | 0.939 | [-0.548, 2.000] | spans zero |  |  |
+*The four product terms and the main effects they modify, under the Poisson likelihood the published model is fitted with and under a spatial block bootstrap across block sizes spanning the residual range. The estimate is the same in every case; only the interval changes. Three of the four product terms exclude zero under the Poisson likelihood and none excludes it at any block size.*

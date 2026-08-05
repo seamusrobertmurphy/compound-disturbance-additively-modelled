@@ -1,0 +1,5 @@
+"Block side (m)","Blocks","Estimate","Interval"," "
+300,74,0.416,"[0.077, 0.742]","clears zero"
+400,39,0.416,"[0.035, 0.767]","clears zero"
+500,27,0.416,"[0.101, 0.731]","clears zero"
+750,14,0.416,"[0.020, 0.747]","clears zero"

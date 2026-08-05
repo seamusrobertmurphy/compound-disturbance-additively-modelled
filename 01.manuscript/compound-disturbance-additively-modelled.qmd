@@ -8,26 +8,18 @@ author:
 abstract: >
   Compound disturbance is routinely described as an interaction and routinely modelled as a sum.
   This study separates the two claims over a mountain pine beetle outbreak and the mixed-severity
-  wildfire that followed it in the southern Selkirk Mountains of British Columbia, asking first
-  whether the two agents are associated on the ground and second whether their effects on conifer
-  regeneration multiply or merely add. The first result concerns the data rather than the forest.
-  The annual beetle classifications from which every beetle surface in the parent study descends
-  were clipped to the fire perimeter before any classification was run, so they carry nodata across
-  almost all of the surrounding unburned forest, and the published red-attack surface is confined
-  more tightly still. Read at face value they imply almost no beetle mortality around the fire. The
-  provincial Aerial Overview Survey, an independent record that was never clipped, reports attack
-  outside the perimeter at a rate no lower than inside it, so any burned against unburned contrast
-  measures the clip. What survives is the gradient within the perimeter, where every severity class
-  is equally exposed, and there three records sharing no common measurement pathway agree that
-  attack peaks at moderate severity; conditioned on lodgepole cover and elevation that peak
-  attenuates by about two fifths and still clears a spatial block bootstrap interval at every block
-  size the extent can populate, while the fall at high severity is never supported. The second
-  result is the general one. Refitting the parent study's point process model with the beetle by
-  fire product term returns an emphatic interaction under the Poisson likelihood that model is
-  fitted with, and no interaction at all under inference that accounts for the clustering the same
-  study documents in its own figures. The coefficients are identical; the intervals differ by a
-  factor of two to eight. Compound-disturbance interactions can be reported with a confidence that
-  comes from the likelihood rather than from the data.
+  wildfire that followed it in the southern Selkirk Mountains of British Columbia. The first result
+  concerns the data, not the forest. The annual classifications from which every beetle
+  surface in the parent study descends were clipped to the fire perimeter before any classification
+  was run, and an independent provincial survey that was never clipped records attack outside the
+  perimeter at a rate no lower than inside it, so any burned against unburned contrast measures the
+  clip. What survives is the gradient within the perimeter, where three records sharing no common
+  measurement pathway agree that attack peaks at moderate severity, and that peak persists after
+  conditioning on host cover and elevation. The second result is the general one. Refitting the
+  parent study's point process model with the beetle by fire product term returns an emphatic
+  interaction under the Poisson likelihood that model is fitted with, and none under inference
+  accounting for the clustering the same study documents in its own figures. The
+  coefficients are identical and only the intervals differ.
 keywords:
   - compound disturbance
   - mountain pine beetle
@@ -86,7 +78,7 @@ df-print: kable
 ## quoted from a prior session's notes.
 ## patchwork is used only through its `+` and `/` operators in fig-mask, so it
 ## looks unused to a search for function calls. Removing it breaks the figure.
-pkgs <- c("terra", "sf", "knitr", "kableExtra", "ggplot2", "dplyr",
+pkgs <- c("terra", "sf", "knitr", "kableExtra", "ggplot2", "dplyr", "tidyr",
           "tibble", "tidyterra", "patchwork", "ggspatial", "rnaturalearth")
 invisible(lapply(pkgs, function(p) library(p, character.only = TRUE)))
 ## Only what the YAML `execute:` block cannot express. echo, message, warning,
@@ -192,11 +184,15 @@ stopifnot(length(ANN) == length(ANN_YEARS), length(ANN_ALL) >= length(ANN))
 
 Mountain pine beetle outbreak and wildfire increasingly overlap in the conifer forests of western North America, and the overlap is usually described in the language of interaction. Whether the description is earned is a separate question from whether it is common. @talucci2019dead and @meigs2011 both frame the beetle to fire sequence as a modification of fuels and therefore of subsequent severity, and @krawchuk2020 place compound disturbance at the centre of the refugia concept. The claim that the agents interact is, in each case, a claim about a product rather than a sum.
 
+The mechanism that would justify the claim is real and measurable. Beetle-killed foliage loses moisture and shifts in chemistry within a year of attack, and the flammability of that foliage rises accordingly [@page2012]. What has proved hard is carrying the mechanism up to the stand and the landscape. @simard2011 modelled crown fire behaviour through a beetle outbreak in lodgepole pine and found the probability of active crown fire no higher, and in the red stage lower, than in unattacked stands. @harvey2014 found the effect on burn severity contingent on outbreak stage rather than uniform, and small beside the effect of weather. @hart2015 found no relationship at all between outbreak extent and area subsequently burned across the western United States. The literature is therefore contested rather than empty, and what novelty there is in asking again rests on the particular landscape and on the treatment of confounding rather than on the question being new.
+
+That contest is partly a contest about inference. Prior disturbance is not assigned at random, both agents track host abundance and terrain, and burn severity is measured on a raster whose cells are anything but independent. The literature on prior disturbance conditioning subsequent severity has taken this seriously: @stevensrumann2016, asking this study's first question with fire in place of beetle across four large fires, fitted a spatially explicit autoregression precisely because burn severity is autocorrelated. The difficulty is that diagnosing dependence is easier than propagating it, and @magnussen2017 show in a different corner of forest science that omitting residual spatial autocorrelation leaves confidence intervals too narrow rather than merely imprecise. An interaction term is exactly the quantity that failure would flatter.
+
 The parent study for this analysis [@murphy2026] modelled conifer regeneration across three four-hectare plots inside the 2015 Mt Midgeley burn, using classified Landsat surfaces for burn severity and for red-stage beetle mortality. Its abstract describes the additive effects of increasing beetle to fire disturbance interactions. Its model, however, enters red attack, grey attack and burn severity as additive main effects with no product term among them. The two statements are not the same statement, and the ambiguity was noticed at the time without being resolved.
 
 This study asks the two questions that separation implies.
 
-The first is whether prior beetle mortality is associated with subsequent burn severity in this landscape. The outbreak ran from 2005 to 2014 and the fire burned in 2015, so the causal arrow runs one way only, from beetle to fire, and never the reverse. The literature on the question is contested rather than empty, so what novelty there is rests on the particular landscape and on the treatment of confounding rather than on the question being new.
+The first is whether prior beetle mortality is associated with subsequent burn severity in this landscape. The outbreak ran from 2005 to 2014 and the fire burned in 2015, so the causal arrow runs one way only, from beetle to fire, and never the reverse.
 
 The second is whether a beetle by fire product term is supported in a model of regeneration. The test is direct: refit the published point process model with the product term and compare it against the published additive fit. The wording matters and is kept narrow throughout. A designed factorial can license the language of interaction outright, as @bansal2014 do in crossing burn severity with canopy cover and reporting effects that are conditional by construction. An observational fit over ground that neither treatment nor randomisation touched cannot, and the convention in this literature is accordingly more careful: @estabrook2025 describe burn severity as contingent on weather and then fit weather as main effects. This study reports whether the product term is retained and what interval its coefficient carries. It does not report that the two agents interact.
 
@@ -891,18 +887,39 @@ better than `r floor(min(BURNED$"Observed (%)"))` per cent, so the clip cannot g
 among them.
 
 ```{r}
-#| label: tbl-withinburn
+#| label: fig-gradient
 #| echo: true
-#| tbl-cap: "Beetle attack across burn severity within the fire perimeter, in the two local surfaces and in the independent survey. All three peak at moderate severity and fall at high."
+#| fig-cap: "Beetle attack across burn severity within the fire perimeter, in the two local surfaces and in the independent survey. The three records share no common measurement pathway and all three peak at moderate severity. Point labels give the number of cells in each class."
+#| fig-width: 6.2
+#| fig-height: 3.4
 
 WB <- BURNED |>
   select(Class, Cells, `Grey (%)`, `Red (%)`, `Survey (%)`, `Elevation (m)`) |>
   arrange(match(Class, SEV_LEVELS))
 shape <- function(col) paste(sprintf("%.1f", WB[[col]]), collapse = ", ")
-PEAKS <- vapply(c("Grey (%)", "Red (%)", "Survey (%)"),
-                function(k) WB$Class[which.max(WB[[k]])], character(1))
+RECORDS <- c(`Grey (%)` = "Grey stage, corrected",
+             `Red (%)`  = "Red stage, as published",
+             `Survey (%)` = "Aerial Overview Survey")
+PEAKS <- vapply(names(RECORDS), function(k) WB$Class[which.max(WB[[k]])], character(1))
 stopifnot(length(unique(PEAKS)) == 1L)
-show(WB, "tbl-withinburn", "lrrrrr")
+keep(WB, "fig-gradient")
+
+GRAD <- WB |>
+  select(Class, Cells, all_of(names(RECORDS))) |>
+  tidyr::pivot_longer(all_of(names(RECORDS)), names_to = "Record", values_to = "Attacked") |>
+  mutate(Record = factor(RECORDS[Record], levels = unname(RECORDS)),
+         Class  = factor(Class, levels = SEV_LEVELS))
+
+FIG_GRAD <- ggplot(GRAD, aes(Class, Attacked, colour = Record, group = Record)) +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 2.1) +
+  scale_colour_manual(values = c("#7b3294", "#b2182b", "#2166ac"), name = NULL) +
+  scale_y_continuous(limits = c(0, NA), expand = expansion(mult = c(0, 0.12))) +
+  labs(x = "Burn severity class", y = "Cells recorded as attacked (%)") +
+  theme(legend.position = "bottom", panel.grid.major.x = element_blank())
+GRAD_PATH <- file.path("..", "03.outputs", "PNG", "fig-gradient.png")
+ggsave(GRAD_PATH, FIG_GRAD, width = 6.2, height = 3.4, dpi = 300, bg = "white")
+knitr::include_graphics(GRAD_PATH)
 ```
 
 Three records agree on the shape. The corrected grey union runs `r shape("Grey (%)")` per cent
@@ -1134,9 +1151,11 @@ not free: blocks must be large enough to contain the dependence and numerous eno
 Over a burn this size the two requirements collide.
 
 ```{r}
-#| label: tbl-blocks
+#| label: fig-blocks
 #| echo: true
-#| tbl-cap: "The moderate-against-low severity coefficient under block bootstraps of increasing block size, with the number of blocks each affords. The estimate is fixed; only the interval changes. The extent caps the largest usable block, not the conclusion."
+#| fig-cap: "The moderate-against-low severity coefficient under block bootstraps of increasing block size. The estimate is fixed; only the interval changes, and the number of blocks each size affords is printed above it. The extent caps the largest usable block, not the conclusion."
+#| fig-width: 5.6
+#| fig-height: 3.2
 
 ## The 500 m run is M_ADJ exactly: same formula, same blocks, same seed, same
 ## draws. Reusing it saves a redundant 400-replicate bootstrap. Each block_boot
@@ -1168,19 +1187,26 @@ bins <- cut(dd, c(0, 100, 200, 300, 500, 800, 1200, Inf))
 CORR <- tibble(`Lag (m)` = levels(bins),
                `Residual correlation` = round(as.numeric(tapply(rr, bins, mean)), 3))
 
-show(SWEEP, "tbl-blocks", "rrrll")
-```
+keep(SWEEP, "fig-blocks")
 
-```{r}
-#| label: tbl-correlogram
-#| echo: true
-#| tbl-cap: "Residual correlogram of the conditioned model. Dependence is strong within 100 m and has largely decayed by 500 m, which is the basis for the block sizes tried above."
-
-show(CORR, "tbl-correlogram", "lr")
+FIG_BLK <- ggplot(SWEEP_RAW, aes(factor(`Block side (m)`), Estimate)) +
+  geom_hline(yintercept = 0, linetype = "22", colour = "grey40") +
+  geom_linerange(aes(ymin = Lower, ymax = Upper), linewidth = 0.55, colour = "#7b3294") +
+  geom_point(size = 2.2, colour = "#7b3294") +
+  geom_text(aes(y = Upper, label = paste(K, "blocks")), vjust = -0.9, size = 2.5,
+            colour = "grey30") +
+  scale_y_continuous(expand = expansion(mult = c(0.08, 0.18))) +
+  labs(x = "Block side (m)", y = "Log-odds, moderate against low severity") +
+  theme(panel.grid.major.x = element_blank())
+BLK_PATH <- file.path("..", "03.outputs", "PNG", "fig-blocks.png")
+ggsave(BLK_PATH, FIG_BLK, width = 5.6, height = 3.2, dpi = 300, bg = "white")
+knitr::include_graphics(BLK_PATH)
 ```
 
 Residual dependence falls from `r CORR$"Residual correlation"[1]` within 100 m to
-`r CORR$"Residual correlation"[4]` by 500 m, so a 500 m block contains most of it. The burn spans
+`r CORR$"Residual correlation"[4]` by 500 m, so a 500 m block contains most of it. @fig-correlogram
+plots this alongside the same measurement inside the regeneration plots, because the two scales meet
+the same obstacle and it is easier to see them together. The burn spans
 about 4.0 by 2.0 km, which affords `r SWEEP$Blocks[SWEEP$"Block side (m)" == BLOCK_M]` blocks at
 that size and only `r SWEEP$Blocks[which.max(SWEEP$"Block side (m)")]` at
 `r max(SWEEP$"Block side (m)")` m. The companion study uses roughly 1 km blocks over a landscape
@@ -1401,7 +1427,7 @@ severity only, so its reference is every point that is neither, which is
 `r format(REF_N, big.mark = ",")` quadrature points, of which `r format(REF_MOD, big.mark = ",")`
 are moderate severity and the remainder unburned or unclassified. Moderate is not a neutral baseline
 here: it is the class that carries the most beetle attack of the three, as
-@tbl-withinburn reports across the whole burn and this table repeats inside the plots. So the
+@fig-gradient shows across the whole burn and this table repeats inside the plots. So the
 published fire coefficients are contrasts against a pooled category that is
 `r round(100 * REF_MOD / REF_N)` per cent the severity class with the strongest beetle association.
 Nothing in the published fit is wrong about this, but neither coefficient means what its label
@@ -1481,9 +1507,11 @@ parent study devotes two figures to rejecting it, reporting inhomogeneous K and 
 independent-process likelihood as its inference. The residuals say the same thing.
 
 ```{r}
-#| label: tbl-ppcorr
+#| label: fig-correlogram
 #| echo: true
-#| tbl-cap: "Residual correlogram of the fit with product terms, over the quadrature points. Dependence is strong within one 30 m cell and has decayed by about 100 m, which sets the block sizes tried below."
+#| fig-cap: "Residual dependence at the two scales the study works at. Left, the conditioned model of @sec-conditioning across the burn, where dependence has largely decayed by 500 m. Right, the fit with product terms over the quadrature points inside the regeneration plots, where it has decayed by about 100 m. The two panels are the same obstacle two orders of magnitude apart, and each sets the block sizes tried at its own scale."
+#| fig-width: 7.2
+#| fig-height: 3.2
 
 pres <- function(X, b) {
   mu <- exp(drop(X %*% b)) * PP$w
@@ -1500,7 +1528,32 @@ pbins <- cut(dd, c(0, 25, 50, 75, 100, 150, 200, Inf))
 PCORR <- tibble(`Lag (m)` = levels(pbins),
                 `Residual correlation` = round(as.numeric(tapply(rr, pbins, mean)), 3)) |>
   filter(!is.na(`Residual correlation`))
-show(PCORR, "tbl-ppcorr", "lr")
+keep(PCORR, "fig-correlogram")
+
+## Bin midpoints for plotting. cut() labels are "(a,b]", and the open final bin
+## has no midpoint, so it is dropped rather than given an invented one.
+mid_of <- function(lab) {
+  n <- regmatches(lab, gregexpr("-?[0-9.]+|Inf", lab))
+  vapply(n, function(v) mean(as.numeric(v)), numeric(1))
+}
+corr_df <- function(x, scale) {
+  x |> mutate(Lag = mid_of(`Lag (m)`), Scale = scale) |>
+    filter(is.finite(Lag)) |> select(Lag, r = `Residual correlation`, Scale)
+}
+CORR_BOTH <- bind_rows(
+  corr_df(CORR,  "Across the burn, conditioned model"),
+  corr_df(PCORR, "Inside the plots, fit with product terms"))
+
+FIG_CORR <- ggplot(CORR_BOTH, aes(Lag, r)) +
+  geom_hline(yintercept = 0, linetype = "22", colour = "grey40") +
+  geom_line(linewidth = 0.5, colour = "#7b3294") +
+  geom_point(size = 1.9, colour = "#7b3294") +
+  facet_wrap(~ Scale, scales = "free_x") +
+  labs(x = "Lag (m)", y = "Residual correlation") +
+  theme(strip.text = element_text(face = "bold", size = 8))
+CORR_PATH <- file.path("..", "03.outputs", "PNG", "fig-correlogram.png")
+ggsave(CORR_PATH, FIG_CORR, width = 7.2, height = 3.2, dpi = 300, bg = "white")
+knitr::include_graphics(CORR_PATH)
 ```
 
 Dependence runs at `r PCORR$"Residual correlation"[1]` inside 25 m and is still
@@ -1510,9 +1563,11 @@ That collision is the same one @sec-blocks met at landscape scale, arriving agai
 magnitude down.
 
 ```{r}
-#| label: tbl-ppblocks
+#| label: fig-interaction
 #| echo: true
-#| tbl-cap: "The four product terms and the main effects they modify, under a spatial block bootstrap across block sizes spanning the residual range. The estimates are fixed; only the intervals change. No product term excludes zero at any block size tried."
+#| fig-cap: "The four product terms and the main effects they modify, under the Poisson likelihood the published model is fitted with and under a spatial block bootstrap across block sizes spanning the residual range. The estimate is the same in every case; only the interval changes. Three of the four product terms exclude zero under the Poisson likelihood and none excludes it at any block size."
+#| fig-width: 7.4
+#| fig-height: 4.4
 
 pp_boot <- function(X, side_m, seed = 11) {
   ids <- split(seq_len(nrow(PP)), paste(PP$x %/% side_m, PP$y %/% side_m))
@@ -1535,7 +1590,49 @@ PPB <- PPB_RAW |>
             Estimate = round(B_PROD[Term], 3),
             Interval = ci_txt(Lower, Upper),
             ` ` = ifelse(clears(Lower, Upper), "clears zero", "spans zero"))
-show(PPB, "tbl-ppblocks", "rrlrll") |> collapse_rows(1:2, valign = "top")
+keep(PPB, "fig-interaction")
+
+## The published likelihood's own interval, drawn beside the block intervals so
+## the comparison the paper rests on is one figure rather than two tables.
+## Design-matrix column names are not axis labels. Written once here and reused
+## by the verdict chunk below, so the figure and the prose cannot disagree.
+PP_WORDS <- c(MPB_G = "grey attack", MPB_R = "red attack",
+              Fire_H = "high severity", Fire_L = "low severity")
+pp_label <- function(term) {
+  parts <- strsplit(term, ":", fixed = TRUE)
+  vapply(parts, function(v) {
+    lab <- paste(PP_WORDS[v], collapse = " by ")
+    paste0(toupper(substring(lab, 1, 1)), substring(lab, 2))
+  }, character(1))
+}
+
+SRC <- c("Poisson likelihood", paste(PP_SWEEP, "m blocks"))
+PPF <- bind_rows(
+  tibble(Term = PP_SHOWN, Lower = B_PROD[PP_SHOWN] - 1.96 * SE_PROD[PP_SHOWN],
+         Upper = B_PROD[PP_SHOWN] + 1.96 * SE_PROD[PP_SHOWN], Source = SRC[1]),
+  PPB_RAW |> transmute(Term, Lower, Upper,
+                       Source = paste(`Block side (m)`, "m blocks"))) |>
+  mutate(Estimate = B_PROD[Term],
+         Source = factor(Source, levels = SRC),
+         Kind = factor(ifelse(grepl(":", Term), "Product terms", "Main effects"),
+                       levels = c("Main effects", "Product terms")),
+         Term = factor(pp_label(Term), levels = rev(pp_label(PP_SHOWN))))
+
+FIG_INT <- ggplot(PPF, aes(Estimate, Term, colour = Source)) +
+  geom_vline(xintercept = 0, linetype = "22", colour = "grey40") +
+  geom_linerange(aes(xmin = Lower, xmax = Upper),
+                 position = position_dodge(width = 0.75), linewidth = 0.45) +
+  geom_point(position = position_dodge(width = 0.75), size = 1.3) +
+  scale_colour_manual(values = c("#b2182b", "#c6dbef", "#6baed6", "#2171b5", "#08306b"),
+                      name = NULL) +
+  facet_grid(Kind ~ ., scales = "free_y", space = "free_y") +
+  guides(colour = guide_legend(nrow = 1, reverse = FALSE)) +
+  labs(x = "Coefficient", y = NULL) +
+  theme(legend.position = "bottom", panel.grid.major.y = element_blank(),
+        strip.text.y = element_text(face = "bold", size = 8, angle = -90))
+INT_PATH <- file.path("..", "03.outputs", "PNG", "fig-interaction.png")
+ggsave(INT_PATH, FIG_INT, width = 7.4, height = 4.4, dpi = 300, bg = "white")
+knitr::include_graphics(INT_PATH)
 ```
 
 ```{r}
@@ -1548,13 +1645,10 @@ show(PPB, "tbl-ppblocks", "rrlrll") |> collapse_rows(1:2, valign = "top")
 PROD_ROWS  <- PPB_RAW |> filter(Term %in% PRODT)
 PROD_CLEAR <- sum(clears(PROD_ROWS$Lower, PROD_ROWS$Upper))
 
-## Prose reads in words, not in design-matrix column names.
-PP_WORDS <- c(MPB_G = "grey-stage attack", MPB_R = "red-stage attack",
-              Fire_H = "high burn severity", Fire_L = "low burn severity")
 MAIN_KEEP  <- PPB_RAW |> filter(!Term %in% PRODT) |>
   group_by(Term) |> summarise(all_clear = all(clears(Lower, Upper)), .groups = "drop") |>
   filter(all_clear) |> pull(Term)
-MAIN_WORDS <- paste(PP_WORDS[MAIN_KEEP], collapse = " and ")
+MAIN_WORDS <- paste(tolower(pp_label(MAIN_KEEP)), collapse = " and ")
 
 ## The block sizes the correlogram actually licenses, which is not all of the
 ## sizes tried. Quoting the full sweep's block counts would credit the study with
@@ -1633,7 +1727,7 @@ covariates. The parent study devotes two figures and fourteen envelope simulatio
 that the seedling pattern is not independent: it is clustered at every distance examined, which is
 the expected result for conifer regeneration and not a defect [@murphy2026]. Those two facts sit in
 the same paper, and the second invalidates the standard errors the first is reported alongside. The
-residual correlogram of @tbl-ppcorr reaches the same verdict from inside the model, with dependence
+residual correlogram of @fig-correlogram reaches the same verdict from inside the model, with dependence
 of `r PCORR$"Residual correlation"[1]` within 25 m.
 
 This is not an unusual error and it is not a careless one. Clustered point patterns are routinely
@@ -1733,7 +1827,7 @@ means a plot network rather than three contiguous plots.
 The published point process results should be reported with intervals that respect the clustering.
 This is inexpensive: the estimates are unchanged and the machinery is the block bootstrap used here.
 It affects which main effects in the parent study's Table 12 survive, and on the evidence of
-@tbl-ppblocks the answer is that two of them do.
+@fig-interaction the answer is that two of them do.
 
 Recovering question A in its original form requires rebuilding the beetle classification over the
 unclipped landscape. That is worth doing only if the Landsat archive is being revisited for other

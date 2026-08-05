@@ -1,8 +1,8 @@
 # Bibliography manifest
 
 Provenance for every entry in `references-compound.bib`: where it came from, what could not be
-extracted, and any disagreement between a filename and the text it names. Thirteen entries at
-5 August 2026.
+extracted, and any disagreement between a filename and the text it names. Twenty-three entries at
+5 August 2026, of which fifteen are cited in the manuscript.
 
 ## Verified against the source document
 
@@ -63,11 +63,29 @@ re-entered. See that project's `references-beetle-manifest.md` for their origina
 
 ## Outstanding
 
-The compound-disturbance literature the introduction will need is not yet in the file. Harvey,
-Hart and Simard are named in the task request as the contested literature on beetle influence on
-burn severity and none of them is represented. Add them from read PDFs, not from memory, before the
-introduction is written beyond its present stub.
+**The contested literature is now in the file**, see the section below: `simard2011`, `harvey2014`
+and `hart2015` were added on 5 August 2026 from their CrossRef records. None of the three PDFs was
+read, so they are cited only for the finding each is known for and each claim made about them is at
+the level of the abstract. If any is to carry more weight than that, read it first.
+
+Four entries remain uncited in the manuscript: `rodman2021`, `meddens2012`, `safranyik2006` and
+`murphy2026refugia` is cited but the other three are not. Either use them or remove them before
+submission; an uncited entry in a reference list is a referee's free catch.
 
 `04.references/literature/` is empty. The repository is public, so whether other publishers' PDFs
 may sit there is the author's decision to make explicitly rather than by default. The parent paper's
 own PDF is gitignored for this reason; see `grandfather-study/README.md`.
+
+## Added 5 August 2026 for the Introduction and Discussion
+
+Verified against the CrossRef record by DOI. The three PNAS and Ecological Monographs entries are the
+contested beetle-to-fire literature the task request flagged as missing from the first draft; the two
+CJFR entries come from the comparator survey.
+
+| Key | How verified | Notes |
+|---|---|---|
+| `simard2011` | CrossRef, DOI `10.1890/10-1176.1` | The negative result on crown-fire probability, and the anchor of the contested literature |
+| `harvey2014` | CrossRef, DOI `10.1073/pnas.1411346111` | Beetle effects on severity contingent on outbreak stage rather than uniform |
+| `hart2015` | CrossRef, DOI `10.1073/pnas.1424037112` | Area burned unaffected by outbreaks; the strongest negative in the set |
+| `stevensrumann2016` | CrossRef, DOI `10.1139/cjfr-2016-0185`; full text read | The closest analogue in the target journal, prior disturbance conditioning subsequent severity |
+| `magnussen2017` | CrossRef, DOI `10.1139/cjfr-2017-0247` | **CrossRef deposits the third author's given name as "Fransisco", which is a deposit typo; the bibliography uses "Francisco".** Flagged here rather than silently corrected |
