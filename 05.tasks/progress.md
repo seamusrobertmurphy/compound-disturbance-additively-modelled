@@ -1,8 +1,9 @@
 # Progress log: compound beetle and fire disturbance at Darkwoods
 
 **Started:** 2026-08-02
-**Status:** Phases 0 and 1 complete. Phase 2, the interaction refit, is next.
-**Last updated:** 2026-08-02
+**Status:** Phases 0 to 4 complete. The manuscript is a complete draft: provenance, conditioned
+gradient, interaction refit, discussion and conclusions. Venue is the outstanding decision.
+**Last updated:** 2026-08-05
 **Current task request:** `TASK-REQUEST-2026-08-02.md`
 **Parent paper:** Murphy et al. 2026, *Forest Ecology and Management* 618:123985, published
 **Sibling paper and template:** `beetle-topography-and-wind-study`
@@ -258,29 +259,104 @@ does not stop the driver scanning the 950 MB store; the only fix is caching a cl
 input file, which moves a step outside the document and against the house rule. Flagged as a
 decision, not taken.
 
+### Phase 2, the interaction refit (5 August 2026)
+
+The outstanding analysis, and the one the paper is named for. It is now in the manuscript as
+`sec-interaction`, live like everything else.
+
+**The baseline is the grey-corrected refit, not the one in `spatstat_refit_2026-06-01/`.** This was
+nearly got wrong. That folder's `Table12_LGCP_coefficients.csv` reports the grey-stage main effect at
++0.609, p = 5e-11, and it is built from `mpb_grey_na.tif`. Reading
+`rebuild_mpb_grey_na.py` shows that raster is built with the test `annual == 1`, which is exactly the
+wrong value test of trap 3: it is why the file holds 932 cells, the same count as the discredited
+`mpb_grey_attackcount.tif`, because the same script writes both. The parent study caught this before
+publication and re-ran the model against `mpb_grey_corrected.tif`, giving
+`Table12_LGCP_coefficients_CORRECTED.csv` in the 2 June archive. That is the canonical published fit
+and the one this work reproduces. Anyone starting from the obvious folder would have refit against a
+superseded model and reported the difference as a finding.
+
+**The published fit reproduces exactly.** All nine coefficients agree to four decimal places, and a
+`stopifnot` in `tbl-ppreproduce` fails the render if that ever stops holding. The reproduction is the
+licence for everything after it: a product term added to a model that did not reproduce would test
+nothing. The specification is the Berman-Turner device, 3,866 data points against 1,282 quadrature
+points at 10 m over 12.69 ha, fitted as weighted Poisson regression.
+
+**The interaction is decisive under the published likelihood and absent under honest inference.**
+Adding the four beetle by fire product terms gives a likelihood ratio statistic of 99.2 on 4 degrees
+of freedom, and three of the four product terms carry naive intervals excluding zero. Under a spatial
+block bootstrap none of them clears at any of the four block sizes tried, 25 to 100 m. Sixteen
+product-term intervals, zero clearing. The estimates do not move at all; the intervals widen by a
+factor of 2.4 to 7.6. That factor is the whole result.
+
+**The justification is the parent study's own figures.** The Poisson likelihood assumes seedlings are
+placed independently given the covariates, and the parent study spends two figures and 999-simulation
+envelopes establishing that they are not. The residual correlogram agrees from inside the model: 0.806
+within 25 m, still 0.332 between 50 and 75 m, crossing zero near 100 m. That range is what sets the
+block sizes, and a 200 m plot affords 36 blocks at 75 m and 27 at 100 m.
+
+**Two specification findings, reported but not repaired.** The published fit carries indicators for
+high and low severity only, so its reference category is 671 quadrature points of which 553 are
+moderate severity, the class carrying the most beetle attack. And adding the product terms moves the
+high-severity main effect from +0.207 to -0.139, which is not how a real product term behaves. The
+specification is reproduced rather than corrected, because the object was to test the published model
+rather than to replace it, and the manuscript says so.
+
+**The seedling count is settled.** `Seedlings.shp` holds 3,912 points; 46 carry species code 6, which
+is outside the seven-species lookup; 3,866 remain and every one falls inside the plot windows. So the
+two counts in circulation differ by a species filter and nothing else. The published abstract's 3,886
+matches neither and is reproduced by no filter tried. Trap 9 can be closed on the first two and stands
+on the third. **Still worth querying with the author.**
+
+**A bug worth recording.** The first block bootstrap returned no usable draws at any block size and
+every interval came back `NA`. The cause is scoping, not statistics: `glm` resolves `weights` in the
+formula's environment when it is not a column of `data`, the formula carried the global environment,
+and the function-local weight vector was invisible from there. Every fit failed and `try` swallowed
+all of it. The fix is to keep the weight as a column of the frame. The general lesson is that a
+bootstrap returning all-`NA` is a code failure until proven otherwise, and `try` inside a loop needs a
+usable-draw count reported alongside the interval. `tbl-ppblocks` carries one.
+
+### Phases 3 and 4, framing and writing (5 August 2026)
+
+The framing question the task request deferred to Phase 3 answers itself on the Phase 2 result. The
+paper is not about a compound-disturbance interaction. It is about the gap between a claim and the
+inference offered for it, with the interaction as the worked example, and the title chosen on
+2 August survives exactly as intended.
+
+Written: `sec-discussion` with subsections on findings, the general result, extent, limitations and
+what would settle the open questions; and `sec-conclusions`. The `sec-status` placeholder is gone. The
+abstract is rewritten and is no longer marked provisional. The introduction gains a paragraph
+previewing the second result. Two references added for the Berman-Turner device, `berman1992` and
+`baddeley2000`, both verified against the CrossRef record by DOI rather than by title, because a title
+search for the second returns a different item of the same name.
+
+**Render time roughly doubled**, from about 90 seconds to about 3 minutes 20, all of it the new block
+bootstrap. Acceptable, and cheaper than moving the analysis out of the document.
+
 ## Next steps
 
-1. **Phases 0 and 1 are done.** See the entries above. `mpb_red_na.tif` is confirmed gone from the
-   parent tree, so the narrower of the two clips cannot be lifted without rebuilding the layer.
+The analysis is complete and the manuscript is a complete draft. What remains is author decisions and
+housekeeping, not work that changes a number.
 
-2. **Phase 2, the interaction refit.** The outstanding analysis, and untouched by the clip because
-   the seedling point pattern lies wholly inside the burn. Refit the published additive point
-   process model with the beetle by fire product term and compare against the published fit. Two
-   things to do first. Build the missing moderate-severity intersection raster, since only high and
-   low exist and moderate carries the most attack of the three. And settle the seedling frame at
-   3,912 or 3,866, stating which in the Methods and querying the published 3,886 with the author.
+1. **Venue, and it is the binding item.** See `VENUE-NOTE-2026-08-05.md`. Two emails settle it: read
+   the Forests feature-paper invitation of 24 June 2026 for its APC terms and its scope language, and
+   ask the *Forest Ecology and Management* editor whether a re-analysis of a paper they published in
+   2026 is admissible and under what article type. Both publisher sites returned 403 to a direct
+   fetch, so nothing in that note was read off the live page and every figure in it needs confirming
+   in a browser. Do no template work before this resolves; the Elsevier extension is vendored and
+   the document already renders to Word, so formatting is cheap and late.
 
-   Use the corrected grey union, not the published red-stage surface, wherever either would serve.
-   Note that the parent study's own corrected refit already puts the grey-stage main effect at
-   roughly zero, p = 0.99, so the interaction term is being added to a model whose grey main effect
-   is null. That is worth stating plainly rather than discovering late.
+2. **Query the published 3,886 with the author.** `Seedlings.shp` holds 3,912 points and the
+   seven-species filter leaves 3,866. No filter tried reproduces 3,886. The manuscript says so.
 
-3. **Framing, with the author.** Deferred to Phase 3 as the task request specifies. Phases 0 and 1
-   already give the paper a spine that does not depend on the interaction test resolving either way:
-   a provenance result that invalidates the burned-against-unburned comparison, a narrow within-burn
-   result that survives conditioning, and two negative results that are both about extent.
+3. **Two author decisions carried over.** Whether to unify the `tbl-crosscheck` and `tbl-host`
+   frames or to state their 68-cell difference in the Methods; a `stopifnot` currently prevents the
+   divergence widening silently. And whether copyrighted PDFs may sit in `04.references/literature/`
+   given the repository is public, the parent paper's own PDF being gitignored for that reason.
 
-4. **Housekeeping.** Register as a submodule of `claude-science-library`. Verify the venue against
-   live guidelines before any template work; note the Forests feature-paper invitation of 24 June
-   2026. Decide whether copyrighted PDFs may sit in `04.references/literature/` given the repository
-   is public; the parent paper's own PDF is gitignored for that reason.
+4. **Housekeeping.** Register as a submodule of `claude-science-library`.
+
+5. **Not needed after all.** The moderate-severity intersection raster, listed here on 2 August as a
+   Phase 2 prerequisite, was never required: the interaction is fitted from the severity class masks
+   directly, so the intersection rasters play no part in it. And the caution that the interaction was
+   being added to a model whose grey main effect is null proved correct and is now derived in the
+   document rather than recalled, in `tbl-ppreproduce`.

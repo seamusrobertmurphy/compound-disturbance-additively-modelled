@@ -9,8 +9,9 @@ disturbance interactions; its model enters beetle and fire as additive main effe
 term. This paper tests the interaction the parent asserted, and asks whether the two agents are
 associated on the ground at all.
 
-**Status:** Phases 0 and 1 complete. Renders end to end in about two minutes. The interaction
-refit, question B, is the outstanding work.
+**Status:** complete draft. Provenance check, conditioned within-burn gradient, interaction refit,
+discussion and conclusions. Renders end to end in about three and a half minutes. **Venue is the
+outstanding decision**, see `05.tasks/VENUE-NOTE-2026-08-05.md`.
 **Sibling and template:** `../beetle-topography-and-wind-study` in `claude-science-library`.
 
 ## Entry point
@@ -80,6 +81,25 @@ fire. Conditioning on lodgepole cover and elevation over 5,413 observed cells se
    lands at 503 m, far outside the 872 to 1,747 m the clip spans, so within the burn the
    relationship is monotone and the landscape-scale hump is invisible rather than absent.
 
+### Phase 2: the interaction, and the paper's main result
+
+7. **The beetle by fire interaction is decisive under the published likelihood and absent under
+   inference that respects the clustering.** The parent study's point process trend is fitted by the
+   Berman-Turner device, which is weighted Poisson regression, and a Poisson likelihood counts every
+   seedling as independent evidence about the covariates. Adding the four product terms gives a
+   likelihood ratio statistic of 99.2 on 4 degrees of freedom and three of four product terms with
+   intervals excluding zero. Under a spatial block bootstrap **not one of sixteen product-term
+   intervals clears zero**, at any block size from 25 to 100 m. The estimates are identical either
+   way. Only the intervals move, widening by a factor of 2.4 to 7.6. That factor is the result.
+8. **The justification comes from the parent study's own figures.** It spends two figures and
+   999-simulation envelopes establishing that the seedling pattern is clustered at every distance
+   examined, then reports coefficients whose standard errors assume it is not. The residual
+   correlogram agrees from inside the model: 0.806 within 25 m, 0.332 between 50 and 75 m, crossing
+   zero near 100 m.
+9. **Only two main effects survive** at every block size, red-stage attack and low burn severity, and
+   neither is a product term. This is not evidence that the agents do not interact. It is evidence
+   that 12.69 ha of clustered seedlings cannot resolve a difference of differences.
+
 ## Layout
 
 | Path | What is there |
@@ -146,6 +166,21 @@ No raster is stored in this repository. All are read at render time.
 14. **Do not re-present the published index comparison.** The five fire and four beetle indices,
     their separability, ANOVA and SVM diagnostics are in the parent paper's main text and
     supplement, and in three public repositories. Cite them, never re-table them.
+15. **The canonical published point process fit is the corrected one, and it is not in the obvious
+    folder.** `4.RData/spatstat_refit_2026-06-01/Table12_LGCP_coefficients.csv` is superseded. It is
+    built from `mpb_grey_na.tif`, which `rebuild_mpb_grey_na.py` writes with the test `annual == 1`,
+    the same wrong value test as trap 3 and by the same script that writes the discredited
+    `mpb_grey_attackcount.tif`. That is why both hold 932 cells. Use
+    `Archive/Greystage_Raster_Fix_2026-06-02/tables/Table12_LGCP_coefficients_CORRECTED.csv`, built
+    from `mpb_grey_corrected.tif`. The two differ where it matters: the grey main effect is +0.609 at
+    p = 5e-11 in the superseded fit and -0.0007 at p = 0.99 in the canonical one. Refitting against
+    the wrong baseline would produce a large difference and invite reporting it as a finding.
+16. **`glm` resolves `weights` in the formula's environment, not in the calling function's.** A
+    formula defined at top level carries the global environment, so a weight vector local to a
+    bootstrap function is invisible and every fit errors. Wrapped in `try` inside a loop this is
+    silent and returns an all-`NA` interval. Keep the weight as a column of the frame and pass it by
+    name. `tbl-ppblocks` reports a usable-draw count so an all-`NA` result cannot pass as a wide
+    interval. This cost a debugging cycle on 5 August 2026.
 
 ## Open items
 
@@ -159,11 +194,18 @@ No raster is stored in this repository. All are read at render time.
 - **`mpb_red_na.tif` does not exist anywhere in the parent repository.** Searched on 2 August 2026
   across the whole tree and it is absent, so the narrower of the two clips cannot be lifted without
   rebuilding the layer. Closed as gone rather than mislaid.
-- **Phase 2, the interaction refit, is the outstanding analysis.** Question B is untouched by the
-  clip. Build the missing moderate-severity intersection raster first; only high and low exist, and
-  moderate carries the most attack of the three. See `05.tasks/progress.md` "Next steps".
+- **The published 3,886 seedlings is still unexplained.** `Seedlings.shp` holds 3,912 points and the
+  seven-species filter leaves 3,866, which accounts for both counts in circulation. No filter tried
+  reproduces the abstract's 3,886. Query with the author.
+- **The `tbl-crosscheck` and `tbl-host` frames differ by 68 cells** in the unclassified class, with
+  no explanation in the text. A `stopifnot` prevents the divergence widening silently. Decide before
+  submission whether to unify the frames or state the difference in the Methods.
 - **Not yet a submodule of `claude-science-library`.** The task request asked for this; the
   repository was created standalone before the request was worked.
-- **Venue is the author's decision.** Note only that a Forests feature-paper invitation dated
-  24 June 2026 exists and postdates every earlier venue scan. Verify guidelines live, not from
-  memory.
+- **Venue is the author's decision and it is now the binding item.** See
+  `05.tasks/VENUE-NOTE-2026-08-05.md`. Both publisher sites returned 403 to a direct fetch on
+  5 August 2026, so every figure in that note came from search-result text and needs confirming in a
+  browser. The two things that actually decide it are in an inbox rather than on a website: whether
+  the Forests feature-paper invitation of 24 June 2026 carries an APC waiver and what scope language
+  it uses, and whether *Forest Ecology and Management* will consider a re-analysis of a paper it
+  published in 2026. Do no template work before both are answered.

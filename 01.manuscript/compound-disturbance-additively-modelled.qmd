@@ -6,32 +6,28 @@ author:
     orcid: 0000-0002-1792-0351
     email: seamusrobertmurphy@gmail.com
 abstract: >
-  Provisional, and deliberately outcome-neutral until the interaction test has run. Compound
-  disturbance is routinely described as an interaction and routinely modelled as a sum. This study
-  separates the two claims over a mountain pine beetle outbreak and the mixed-severity wildfire that
-  followed it in the southern Selkirk Mountains of British Columbia, asking first whether the two
-  agents are associated on the ground and second whether their effects on conifer regeneration
-  multiply or merely add. The first result is negative and concerns the data rather
-  than the forest. The annual beetle classifications from which every beetle surface in the parent
-  study descends were clipped to the fire perimeter before any classification was run, so they
-  carry nodata across almost all of the surrounding unburned forest. The published red-attack
-  surface is confined more tightly still, to the ground where burn severity was classified, and
-  reports beetle attack in no cell outside it. Read at face value that implies almost no beetle
-  mortality in the forest around the fire. The provincial Aerial Overview Survey, an independent
-  record that was never clipped, reports beetle attack outside the perimeter at a rate no lower
-  than inside it, and the small sliver of annual data that does extend beyond the perimeter agrees
-  with the survey rather than with the published surface. Any burned against unburned contrast
-  therefore measures the clip. What survives is the gradient within the perimeter, where every
-  severity class is observed and equally exposed to the clip, and there the corrected grey-stage
-  union, the published red-stage surface and the independent survey all agree that attack peaks at
-  moderate severity. Conditioned on lodgepole cover and elevation that peak attenuates by about two
-  fifths and survives, clearing a spatial block bootstrap interval at every block size the extent
-  can populate. Two further results are negative and both concern extent rather than ecology. Attack
-  at high severity is never distinguishable from attack at low severity, so the fall that completes
-  the non-monotone shape is not supported. And host cover cannot be separated from elevation inside
-  a burn this small, the two correlating at 0.52, so the landscape-scale finding that host governs
-  the pattern can be neither confirmed nor contradicted here. Question A is accordingly answered
-  narrowly and within the burn, and the interaction test on regeneration is unaffected.
+  Compound disturbance is routinely described as an interaction and routinely modelled as a sum.
+  This study separates the two claims over a mountain pine beetle outbreak and the mixed-severity
+  wildfire that followed it in the southern Selkirk Mountains of British Columbia, asking first
+  whether the two agents are associated on the ground and second whether their effects on conifer
+  regeneration multiply or merely add. The first result concerns the data rather than the forest.
+  The annual beetle classifications from which every beetle surface in the parent study descends
+  were clipped to the fire perimeter before any classification was run, so they carry nodata across
+  almost all of the surrounding unburned forest, and the published red-attack surface is confined
+  more tightly still. Read at face value they imply almost no beetle mortality around the fire. The
+  provincial Aerial Overview Survey, an independent record that was never clipped, reports attack
+  outside the perimeter at a rate no lower than inside it, so any burned against unburned contrast
+  measures the clip. What survives is the gradient within the perimeter, where every severity class
+  is equally exposed, and there three records sharing no common measurement pathway agree that
+  attack peaks at moderate severity; conditioned on lodgepole cover and elevation that peak
+  attenuates by about two fifths and still clears a spatial block bootstrap interval at every block
+  size the extent can populate, while the fall at high severity is never supported. The second
+  result is the general one. Refitting the parent study's point process model with the beetle by
+  fire product term returns an emphatic interaction under the Poisson likelihood that model is
+  fitted with, and no interaction at all under inference that accounts for the clustering the same
+  study documents in its own figures. The coefficients are identical; the intervals differ by a
+  factor of two to eight. Compound-disturbance interactions can be reported with a confidence that
+  comes from the likelihood rather than from the data.
 keywords:
   - compound disturbance
   - mountain pine beetle
@@ -106,6 +102,13 @@ OUTBREAK <- 2005:2014   # red-attack window preceding the 2015 fire, which burne
 B_BOOT   <- 400L        # spatial block bootstrap replicates
 BLOCK_M  <- 500L        # primary block side in metres
 BLOCK_SWEEP <- c(300L, 400L, 500L, 750L)
+
+## The point process analysis of sec-interaction works inside three four-hectare
+## plots rather than across the burn, so it needs its own block sizes. They are
+## an order of magnitude smaller because the plots are, and the residual
+## correlogram in tbl-ppcorr is what sets them.
+PP_DX    <- 10L         # quadrature spacing of the published fit, in metres
+PP_SWEEP <- c(25L, 50L, 75L, 100L)
 
 ## The class vocabulary, written once. These strings key match(), %in% and
 ## factor(levels=) calls that return NA on a typo rather than erroring, so eight
@@ -198,6 +201,8 @@ The first is whether prior beetle mortality is associated with subsequent burn s
 The second is whether beetle and fire act additively on regeneration or interact. Here the test is direct: refit the published point process model with the beetle by fire product term and compare it against the published additive fit.
 
 The first question turned out to require a prior question, which is whether the surfaces that would answer it can answer it. @sec-provenance reports that check. It is negative, it is decisive, and it changes the shape of question one before any ecology is attempted.
+
+The second question turned out to require a prior question too, and a less obvious one: not whether the data can support a product term, but whether the likelihood used to fit it can be trusted to say. @sec-interaction reports that the product term is emphatic under the likelihood the parent study fits and absent under inference that accounts for the clustering the parent study itself documents. The coefficients are the same either way. That gap, rather than either question's ecology, is what this paper carries beyond the landscape it was measured in.
 
 # Materials
 
@@ -882,21 +887,545 @@ askable at all is the same extent that decides how firmly it can be answered, an
 reported only the 500 m interval would be concealing that the margin at 750 m is a hair's
 breadth.
 
-# Status and next steps {#sec-status}
+# Do the two agents interact in the model? {#sec-interaction}
 
-This document reports the provenance check and the conditioned within-burn analysis that follows from it. The interaction test on regeneration, which is the paper's second question, is not yet in it.
+The first question asked whether beetle and fire are associated on the ground. This one asks whether
+their effects on what grew back multiply or merely add. It is the question the parent study's title
+and abstract assert an answer to and its model never puts to the test, and unlike question A it is
+untouched by the perimeter clip, because the seedling point pattern lies wholly inside the burn and
+every cell entering the model is equally masked.
 
-Question A, as originally posed, compared burned against unburned ground and cannot be asked of these surfaces. It is reframed as a within-burn question about the severity gradient, which the clip does not touch and on which three records agree. Recovering the original comparison would mean rebuilding the classification over the unclipped landscape from the Landsat archive, which is a reprocessing task rather than an analysis task, and it would re-tread the parent study's published methods.
+The test is direct. Refit the published model with the beetle by fire product term and compare.
 
-What replaces it is narrower and defensible. Attack is elevated at moderate burn severity after
-conditioning on host and elevation, and that survives a block bootstrap at every block size this
-extent can populate. It is not elevated at high severity in any specification, so the paper must not
-claim the non-monotone shape in full. And host cover cannot be separated from elevation over eight
-square kilometres, which is a limit of the study area rather than a finding about the forest.
+## The published model and the frame it is fitted on {#sec-ppframe}
 
-Two things follow for the analysis that comes next. The corrected grey-stage union of 2 June 2026 [@murphy2026greyfix] should be preferred to the published red-stage surface wherever either would serve, because it is three times denser, it is observed throughout the perimeter rather than only where severity was classified, and its derivation is documented. And the missing `mpb_red_na.tif` should be looked for before the red-stage surface is used again, since the substitution that replaced it is the narrower of the two clips.
+The parent study models conifer regeneration as an inhomogeneous point process over three
+four-hectare plots, fitted by the Berman-Turner device: the seedlings enter as data points, a regular
+grid of dummy points carries the quadrature weights, and the trend is estimated by weighted Poisson
+regression on the pooled set [@baddeley2000]. The specification is reproduced here exactly, including
+its quadrature spacing, so that anything that changes when the product term is added is the product
+term and not a difference of setup.
 
-Question B is untouched. The regeneration response, the seedling point pattern, lies wholly within the burn, so every cell entering the point process model sits inside the clip and is equally affected by it. Refitting the published additive model with the beetle by fire product term remains the direct test, and it is the next phase of work.
+```{r}
+#| label: ppframe
+#| echo: true
+
+PLOTS <- lapply(1:3, function(i)
+  st_transform(st_read(dpath(sprintf("plot_locations/Plot%d.shp", i)), quiet = TRUE), 32611))
+WIN <- st_union(do.call(rbind, lapply(PLOTS, function(p) p["geometry"])))
+WIN_HA <- as.numeric(st_area(WIN)) / 1e4
+
+## The seedling frame. Three counts are in circulation for this point pattern
+## and the difference between them is a species filter, not a rival survey, so
+## it is derived here rather than chosen.
+SEED_ALL <- st_read(dpath("seedlings/Seedlings.shp"), quiet = TRUE)
+SPECIES  <- c("0", "1", "2", "3", "4", "5", "7")   # the seven-species lookup of the parent study
+IN_LUT   <- as.character(SEED_ALL$species) %in% SPECIES
+SEED     <- SEED_ALL[IN_LUT, ]
+N_RAW    <- nrow(SEED_ALL); N_DROP <- sum(!IN_LUT); N_SEED <- nrow(SEED)
+## Every retained seedling falls inside the plot windows, so the species filter
+## is the whole of the difference between the two counts.
+stopifnot(N_RAW - N_DROP == N_SEED,
+          all(lengths(st_within(SEED, WIN)) > 0))
+
+## The quadrature grid, at the spacing the published fit used.
+bx <- st_bbox(WIN)
+GR <- expand.grid(x = seq(bx["xmin"] + PP_DX/2, bx["xmax"], by = PP_DX),
+                  y = seq(bx["ymin"] + PP_DX/2, bx["ymax"], by = PP_DX))
+GR <- GR[lengths(st_within(st_as_sf(GR, coords = c("x", "y"), crs = 32611), WIN)) > 0, ]
+
+## The covariates of the published trend, read from the same files it read. The
+## grey-stage layer is the corrected union of 2 June 2026, which is the raster
+## the parent study's own final refit uses; the legacy layer it replaced is
+## discussed in sec-ppsupport.
+PP_RAS <- list(
+  Aspect = rast(dpath("terrain_environment/Aspect.utm.tif")),
+  RIX    = rast(dpath("terrain_environment/Rutm.tif")),
+  Wind   = rast(dpath("terrain_environment/Wind.utm.tif")),
+  MPB_G  = rast(file.path(GREY_FIX, "rasters", "mpb_grey_corrected.tif")),
+  MPB_R  = rast(dpath("beetle_stages/Beetle.Outbreak.RedStage.tif")),
+  Fire_H = rast(dpath("fire_severity/Fire.High.NDBR.tif")),
+  Fire_L = rast(dpath("fire_severity/Fire.Low.NDBR.tif")),
+  Fire_M = rast(dpath("fire_severity/Fire.Med.NDBR.tif")))
+
+PP_BINARY <- c("MPB_G", "MPB_R", "Fire_H", "Fire_L", "Fire_M")
+at_points <- function(xy) {
+  pt <- vect(as.matrix(xy), type = "points", crs = "EPSG:32611")
+  z <- lapply(PP_RAS, function(r) as.numeric(terra::extract(r, project(pt, crs(r)))[, 2]))
+  ## Sentinels, as the published script treats them: -1 is flat ground on the
+  ## aspect surface and -999 is missing wind. Beers northness on the remainder.
+  z$Aspect <- cos(ifelse(z$Aspect == -1, NA, z$Aspect) * pi / 180)
+  z$Wind   <- ifelse(z$Wind <= -990, NA, z$Wind)
+  for (nm in PP_BINARY) z[[nm]] <- ifelse(is.na(z[[nm]]), NA, as.numeric(z[[nm]] == 1))
+  as.data.frame(z)
+}
+
+SXY <- st_coordinates(SEED)[, 1:2]
+QXY <- as.matrix(GR)
+PD <- at_points(SXY); PD$SS_dist <- as.numeric(SEED$distance_m)
+PQ <- at_points(QXY)
+## Seed source distance is recorded per seedling, not per cell, so the published
+## fit carries it to the quadrature points by nearest neighbour. Reproduced here
+## because dropping it would change every other coefficient.
+PQ$SS_dist <- PD$SS_dist[FNN::get.knnx(SXY, QXY, k = 1)$nn.index[, 1]]
+
+PD$x <- SXY[, 1]; PD$y <- SXY[, 2]; PD$data_pt <- TRUE
+PQ$x <- QXY[, 1]; PQ$y <- QXY[, 2]; PQ$data_pt <- FALSE
+PP <- rbind(PD, PQ)
+## Berman-Turner: quadrature weight is the cell area at a dummy point and a
+## negligible constant at a data point, and the response is the reciprocal of
+## the weight where a point was observed and zero elsewhere.
+PP$w  <- ifelse(PP$data_pt, 1, PP_DX^2)
+PP$yy <- ifelse(PP$data_pt, 1 / PP$w, 0)
+
+F_ADD <- yy ~ SS_dist + Aspect + RIX + Wind + MPB_G + MPB_R + Fire_H + Fire_L
+F_PROD <- update(F_ADD, . ~ . + MPB_G:Fire_H + MPB_G:Fire_L +
+                             MPB_R:Fire_H + MPB_R:Fire_L)
+PP <- PP[complete.cases(PP[, all.vars(F_ADD)[-1]]), ]
+N_DATA <- sum(PP$data_pt); N_DUMMY <- sum(!PP$data_pt)
+
+## The severity class of each point, needed for the support table and for the
+## four-level specification. Built from the class masks, not from the composite
+## severity code, which is the encoding trap of sec-decode.
+PP$Severity <- factor(
+  with(PP, ifelse(Fire_H == 1, "High", ifelse(Fire_M == 1, "Moderate",
+         ifelse(Fire_L == 1, "Low", UNCLASSED)))),
+  levels = c(SEV_LEVELS, UNCLASSED))
+stopifnot(!any(is.na(PP$Severity)))
+```
+
+The shapefile holds `r format(N_RAW, big.mark = ",")` points. `r N_DROP` of them carry a species code
+outside the seven-species lookup the parent study used, which leaves
+`r format(N_SEED, big.mark = ",")`, and every one of those falls inside the plot windows. That
+settles a count that has been ambiguous across three documents: the two figures in circulation differ
+by a species filter and nothing else, and the third figure, `r format(3886, big.mark = ",")` in the
+published abstract, matches neither and is not reproduced by any filter tried here. The fit uses
+`r format(N_DATA, big.mark = ",")` data points against `r format(N_DUMMY, big.mark = ",")` quadrature
+points over `r sprintf("%.2f", WIN_HA)` ha.
+
+## Reproducing the published fit {#sec-ppreproduce}
+
+Nothing below is worth reading unless the additive fit reproduces. It does, to the precision the
+published table is printed at.
+
+```{r}
+#| label: tbl-ppreproduce
+#| echo: true
+#| tbl-cap: "The published additive trend, as reported by the parent study's final refit and as recomputed here from the same rasters. The comparison is the licence for everything that follows: a product term added to a model that did not reproduce would test nothing."
+
+## glm.fit on a prebuilt model matrix, as in sec-conditioned: identical
+## arithmetic to formula glm and fast enough to bootstrap.
+pfit <- function(X, idx) {
+  f <- suppressWarnings(glm.fit(X[idx, , drop = FALSE], PP$yy[idx],
+                                weights = PP$w[idx], family = poisson()))
+  if (!f$converged) rep(NA_real_, ncol(X)) else f$coefficients
+}
+X_ADD  <- model.matrix(F_ADD, PP)
+X_PROD <- model.matrix(F_PROD, PP)
+stopifnot(nrow(X_ADD) == nrow(PP), nrow(X_PROD) == nrow(PP))
+B_ADD  <- pfit(X_ADD, seq_len(nrow(PP)))
+B_PROD <- pfit(X_PROD, seq_len(nrow(PP)))
+
+PUB <- read.csv(file.path(GREY_FIX, "tables", "Table12_LGCP_coefficients_CORRECTED.csv"))
+REPRO <- tibble(Term = names(B_ADD),
+                Published = round(PUB$Estimate[match(names(B_ADD), PUB$term)], 4),
+                Recomputed = round(unname(B_ADD), 4)) |>
+  mutate(Difference = round(Recomputed - Published, 4))
+## The reproduction is load-bearing. Fail the render if it ever stops holding.
+stopifnot(max(abs(REPRO$Difference)) < 1e-3)
+show(REPRO, "tbl-ppreproduce", "lrrr")
+```
+
+All `r nrow(REPRO)` coefficients agree, and the assertion above fails the render if they ever stop
+agreeing. Two features of the published fit matter for what follows, and both are visible in this
+table. The grey-stage coefficient is `r sprintf("%.4f", REPRO$Published[REPRO$Term == "MPB_G"])`,
+which is zero to three decimal places: the parent study's own corrected refit already found no
+grey-stage main effect. And the two fire terms are indicators for high and low severity, which means
+they are contrasts against whatever the reference category contains.
+
+## What each term rests on {#sec-ppsupport}
+
+A coefficient is only as good as the ground that identifies it. Before adding a product term it is
+worth counting the quadrature points available to estimate one.
+
+```{r}
+#| label: tbl-ppsupport
+#| echo: true
+#| tbl-cap: "Quadrature points inside the three plots, by burn severity class and beetle surface. The published fit's reference category is the union of the two rows that carry no severity indicator, so it pools moderate severity with unburned and unclassified ground."
+
+Q <- PP[!PP$data_pt, ]
+sup_row <- function(cls) {
+  s <- Q[Q$Severity == cls, ]
+  tibble(Class = cls, `Quadrature points` = nrow(s),
+         `Area (ha)` = round(nrow(s) * PP_DX^2 / 1e4, 2),
+         `Grey attacked` = sum(s$MPB_G == 1),
+         `Red attacked`  = sum(s$MPB_R == 1),
+         `In reference category` = all(s$Fire_H == 0 & s$Fire_L == 0))
+}
+SUP <- bind_rows(lapply(levels(PP$Severity), sup_row))
+REF_N   <- sum(SUP$`Quadrature points`[SUP$`In reference category`])
+REF_MOD <- SUP$`Quadrature points`[SUP$Class == "Moderate"]
+GREY_Q  <- sum(Q$MPB_G == 1); RED_Q <- sum(Q$MPB_R == 1)
+show(SUP |> mutate(`In reference category` = ifelse(`In reference category`, "yes", "")),
+     "tbl-ppsupport", "lrrrrl")
+```
+
+Three things follow.
+
+**The reference category is a mixture.** The published fit carries indicators for high and low
+severity only, so its reference is every point that is neither, which is
+`r format(REF_N, big.mark = ",")` quadrature points, of which `r format(REF_MOD, big.mark = ",")`
+are moderate severity and the remainder unburned or unclassified. Moderate is not a neutral baseline
+here: it is the class that carries the most beetle attack of the three, as
+@tbl-withinburn reports across the whole burn and this table repeats inside the plots. So the
+published fire coefficients are contrasts against a pooled category that is
+`r round(100 * REF_MOD / REF_N)` per cent the severity class with the strongest beetle association.
+Nothing in the published fit is wrong about this, but neither coefficient means what its label
+suggests.
+
+**The grey-stage term is now adequately supported, and was not always.** The corrected union carries
+grey attack on `r format(GREY_Q, big.mark = ",")` of `r format(nrow(Q), big.mark = ",")` quadrature
+points, about `r round(100 * GREY_Q / nrow(Q))` per cent of the plot area. The layer it replaced,
+built by a value test the parent study later diagnosed as wrong, carried grey attack on seven
+30 m cells in the same plots [@murphy2026greyfix]. A coefficient reported at
+p < 10^-10^ in the first submission rested on those seven cells, and the corrected refit moved it to
+zero. That correction was made before publication and is to the parent study's credit; it is recorded
+here because it is the same failure mode this paper is about, caught one stage earlier.
+
+**Red attack is confined as sec-provenance describes.** It appears on
+`r format(RED_Q, big.mark = ",")` quadrature points and on none at all outside the classified
+severity classes, which is the narrower of the two clips arriving inside the model.
+
+## The product term {#sec-ppproduct}
+
+```{r}
+#| label: tbl-ppproduct
+#| echo: true
+#| tbl-cap: "The additive trend as published, and the same trend with the four beetle by fire product terms added. Intervals are the naive Poisson intervals the published likelihood implies. On these the interaction is emphatic and three of the four product terms exclude zero."
+
+pois_ci <- function(X, b) {
+  eta <- drop(X %*% b); mu <- exp(eta)
+  V <- solve(crossprod(X, X * (mu * PP$w)))
+  sqrt(diag(V))
+}
+SE_ADD  <- pois_ci(X_ADD,  B_ADD)
+SE_PROD <- pois_ci(X_PROD, B_PROD)
+
+side <- function(b, se, lbl) tibble(
+  Term = names(b), Model = lbl, Estimate = round(unname(b), 3),
+  Interval = ci_txt(b - 1.96 * se, b + 1.96 * se),
+  ` ` = ifelse(clears(b - 1.96 * se, b + 1.96 * se), "excludes zero", ""))
+PRODT <- grep(":", names(B_PROD), value = TRUE)
+PROD <- bind_rows(side(B_ADD, SE_ADD, "As published"),
+                  side(B_PROD, SE_PROD, "With product terms")) |>
+  filter(Term != "(Intercept)")
+
+## The likelihood ratio the published likelihood would report.
+dev_of <- function(X, b) {
+  mu <- exp(drop(X %*% b)) * PP$w; y <- PP$yy * PP$w
+  2 * sum(ifelse(y > 0, y * log(y / mu), 0) - (y - mu))
+}
+LR_STAT <- dev_of(X_ADD, B_ADD) - dev_of(X_PROD, B_PROD)
+LR_DF   <- length(PRODT)
+LR_P    <- pchisq(LR_STAT, LR_DF, lower.tail = FALSE)
+N_PROD_SIG <- sum(clears(B_PROD[PRODT] - 1.96 * SE_PROD[PRODT],
+                         B_PROD[PRODT] + 1.96 * SE_PROD[PRODT]))
+show(PROD, "tbl-ppproduct", "llrll") |> collapse_rows(2, valign = "top")
+```
+
+Read through the likelihood the published model is fitted with, the interaction is not marginal. The
+likelihood ratio statistic is `r sprintf("%.1f", LR_STAT)` on `r LR_DF` degrees of freedom, a
+p-value below `r format(signif(max(LR_P, 1e-16), 1), scientific = TRUE)`, and
+`r N_PROD_SIG` of the `r LR_DF` product terms carry intervals excluding zero. An analyst who stopped
+here would report that the compound-disturbance interaction is confirmed, and would have the parent
+study's own machinery behind the claim.
+
+Two details ought to give pause before that is written down. The product terms do not share a sign:
+grey attack raises regeneration at high severity and lowers it at low severity, and the fitted signs
+reverse between the two beetle surfaces on the same severity class. And adding them moves the main
+effects sharply, taking the high-severity term from
+`r sprintf("%.3f", B_ADD[["Fire_H"]])` to `r sprintf("%.3f", B_PROD[["Fire_H"]])`. A product term
+that is real usually leaves the rest of the model roughly where it found it.
+
+## The same terms under inference that respects the clustering {#sec-pphonest}
+
+The published fit's standard errors are Poisson standard errors, which assume that seedlings are
+placed independently given the covariates. That assumption is not a background technicality here: the
+parent study devotes two figures to rejecting it, reporting inhomogeneous K and L functions with
+999-simulation envelopes that show the seedling pattern clustered at every distance examined
+[@murphy2026]. A model cannot use a clustered-process figure as a result and an
+independent-process likelihood as its inference. The residuals say the same thing.
+
+```{r}
+#| label: tbl-ppcorr
+#| echo: true
+#| tbl-cap: "Residual correlogram of the fit with product terms, over the quadrature points. Dependence is strong within one 30 m cell and has decayed by about 100 m, which sets the block sizes tried below."
+
+pres <- function(X, b) {
+  mu <- exp(drop(X %*% b)) * PP$w
+  (PP$yy * PP$w - mu) / sqrt(mu)
+}
+rq <- pres(X_PROD, B_PROD)[!PP$data_pt]
+rq <- rq - mean(rq)
+set.seed(7)
+jj <- sample(nrow(Q), min(2500L, nrow(Q)))
+dd <- as.vector(dist(cbind(Q$x[jj], Q$y[jj])))
+rr <- outer(rq[jj], rq[jj]) / mean(rq[jj]^2)
+rr <- rr[lower.tri(rr)]
+pbins <- cut(dd, c(0, 25, 50, 75, 100, 150, 200, Inf))
+PCORR <- tibble(`Lag (m)` = levels(pbins),
+                `Residual correlation` = round(as.numeric(tapply(rr, pbins, mean)), 3)) |>
+  filter(!is.na(`Residual correlation`))
+show(PCORR, "tbl-ppcorr", "lr")
+```
+
+Dependence runs at `r PCORR$"Residual correlation"[1]` inside 25 m and is still
+`r PCORR$"Residual correlation"[3]` between 50 and 75 m, crossing zero at around 100 m. A block that
+contains it must therefore be at least 75 to 100 m on a side, and a 200 m plot affords few of those.
+That collision is the same one @sec-blocks met at landscape scale, arriving again two orders of
+magnitude down.
+
+```{r}
+#| label: tbl-ppblocks
+#| echo: true
+#| tbl-cap: "The four product terms and the main effects they modify, under a spatial block bootstrap across block sizes spanning the residual range. The estimates are fixed; only the intervals change. No product term excludes zero at any block size tried."
+
+pp_boot <- function(X, side_m, seed = 11) {
+  ids <- split(seq_len(nrow(PP)), paste(PP$x %/% side_m, PP$y %/% side_m))
+  K <- length(ids)
+  set.seed(seed)
+  M <- vapply(seq_len(B_BOOT),
+              function(b) pfit(X, unlist(ids[sample.int(K, K, TRUE)], use.names = FALSE)),
+              numeric(ncol(X)))
+  ci <- apply(M, 1, quantile, c(0.025, 0.975), na.rm = TRUE)
+  tibble(Term = colnames(X), Lower = ci[1, ], Upper = ci[2, ], K = K,
+         Usable = apply(M, 1, function(v) sum(is.finite(v))))
+}
+
+PP_SHOWN <- c("MPB_G", "MPB_R", "Fire_H", "Fire_L", PRODT)
+PPB_RAW <- bind_rows(lapply(PP_SWEEP, function(m)
+  pp_boot(X_PROD, m) |> filter(Term %in% PP_SHOWN) |> mutate(`Block side (m)` = m)))
+
+PPB <- PPB_RAW |>
+  transmute(`Block side (m)`, Blocks = K, Term,
+            Estimate = round(B_PROD[Term], 3),
+            Interval = ci_txt(Lower, Upper),
+            ` ` = ifelse(clears(Lower, Upper), "clears zero", "spans zero"))
+show(PPB, "tbl-ppblocks", "rrlrll") |> collapse_rows(1:2, valign = "top")
+```
+
+```{r}
+#| label: pp-verdict
+#| echo: true
+#| output: false
+
+## Let the sweep state the conclusion. Asserting one that a refit could
+## invalidate is the error sec-blocks records having made once already.
+PROD_ROWS  <- PPB_RAW |> filter(Term %in% PRODT)
+PROD_CLEAR <- sum(clears(PROD_ROWS$Lower, PROD_ROWS$Upper))
+
+## Prose reads in words, not in design-matrix column names.
+PP_WORDS <- c(MPB_G = "grey-stage attack", MPB_R = "red-stage attack",
+              Fire_H = "high burn severity", Fire_L = "low burn severity")
+MAIN_KEEP  <- PPB_RAW |> filter(!Term %in% PRODT) |>
+  group_by(Term) |> summarise(all_clear = all(clears(Lower, Upper)), .groups = "drop") |>
+  filter(all_clear) |> pull(Term)
+MAIN_WORDS <- paste(PP_WORDS[MAIN_KEEP], collapse = " and ")
+
+## The block sizes the correlogram actually licenses, which is not all of the
+## sizes tried. Quoting the full sweep's block counts would credit the study with
+## the 25 m run's 234 blocks, and a 25 m block does not contain the dependence.
+PP_OK    <- PP_SWEEP[PP_SWEEP >= 75]
+PP_OK_K  <- PPB_RAW |> filter(`Block side (m)` %in% PP_OK) |>
+  distinct(`Block side (m)`, K) |> arrange(desc(K))
+PP_OK_TXT <- paste(sprintf("%d at %d m", PP_OK_K$K, PP_OK_K$`Block side (m)`),
+                   collapse = " and ")
+WIDEN <- PPB_RAW |>
+  mutate(naive = 2 * 1.96 * SE_PROD[Term], ratio = (Upper - Lower) / naive) |>
+  summarise(lo = min(ratio), hi = max(ratio))
+```
+
+**Not one of the `r nrow(PROD_ROWS)` product-term intervals excludes zero.** Across four block sizes
+and `r LR_DF` product terms the count that clears is `r PROD_CLEAR`. The estimates have not moved,
+because the estimates are not what was wrong; the intervals have widened by a factor of
+`r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)` against the naive Poisson intervals of
+@tbl-ppproduct, and that factor is the whole of the difference between an interaction that looks
+overwhelming and one that is not there.
+
+What survives is thin and worth stating precisely. The only terms among those shown whose intervals
+exclude zero at every block size are `r MAIN_WORDS`. Neither is a product term. The regeneration data
+support main effects for red-stage beetle attack and low burn severity, and support no statement at
+all about the two agents acting together.
+
+This is not a demonstration that the agents do not interact. It is a demonstration that these data
+cannot tell. Three plots totalling `r sprintf("%.1f", WIN_HA)` ha afford `r PP_OK_TXT` across the
+block sizes the residual range permits, and a product term asks the data to resolve a difference of differences across four
+severity-by-attack combinations on that footprint. The published likelihood answers the question
+confidently because it counts `r format(N_DATA, big.mark = ",")` seedlings as
+`r format(N_DATA, big.mark = ",")` independent pieces of evidence. They are not.
+
+# Discussion {#sec-discussion}
+
+Two questions were asked. Neither returned the answer it was posed to find, and the reasons are
+different in kind.
+
+## What the study found {#sec-found}
+
+**Beetle and fire cannot be compared across the fire perimeter in this landscape, because the
+surfaces that would do it stop at the perimeter.** The annual classifications from which every local
+beetle surface descends carry nodata across almost all of the unburned forest, and they carried it
+before any classification that used them was run. The consequence is not a caveat. A contingency
+table built across the boundary reports beetle attack rising from a fraction of a per cent in
+unburned forest to a fifth at moderate severity, and that table measures the mask. An independent
+record that was never clipped, the provincial Aerial Overview Survey, finds attack outside the
+perimeter at a rate no lower than inside it.
+
+**Within the burn the severity gradient is real and narrow.** Three records that do not share a
+measurement pathway agree that attack peaks at moderate severity, and conditioning on lodgepole cover
+and elevation attenuates that peak by about two fifths without removing it. The fall at high severity
+is not supported in any specification. So the non-monotone shape is a claim these data carry at its
+peak and not at its fall, and the paper reports it that way.
+
+**The beetle by fire interaction is not supported.** Fitted through the likelihood the parent study
+uses, it is emphatic: a likelihood ratio statistic of `r sprintf("%.1f", LR_STAT)` on `r LR_DF`
+degrees of freedom and three of four product terms excluding zero. Fitted with inference that
+accounts for the clustering of the seedling pattern, every product term spans zero at every block
+size tried. The estimates do not move. Only the intervals do, by a factor of
+`r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`, and that factor is the entire
+distance between a confirmed interaction and no interaction at all.
+
+## Why the third result is the general one {#sec-general}
+
+The parent study's abstract describes the additive effects of increasing beetle to fire disturbance
+interactions. Its model has no product term. This paper set out to close that gap by adding one, and
+found that the data cannot support a product term either way. That is a more useful outcome than
+either of the two the study was designed to produce, because it locates the problem in the inference
+rather than in the ecology.
+
+The mechanism is worth stating plainly, because it is not specific to this landscape. A point process
+trend fitted by the Berman-Turner device is a weighted Poisson regression [@berman1992; @baddeley2000],
+and a Poisson likelihood treats every seedling as an independent piece of evidence about the
+covariates. The parent study devotes two figures and fourteen envelope simulations to establishing
+that the seedling pattern is not independent: it is clustered at every distance examined, which is
+the expected result for conifer regeneration and not a defect [@murphy2026]. Those two facts sit in
+the same paper, and the second invalidates the standard errors the first is reported alongside. The
+residual correlogram of @tbl-ppcorr reaches the same verdict from inside the model, with dependence
+of `r PCORR$"Residual correlation"[1]` within 25 m.
+
+This is not an unusual error and it is not a careless one. Clustered point patterns are routinely
+fitted this way, and the software makes the Poisson path the path of least resistance. What makes it
+consequential here is the size of the correction. A misspecified likelihood does not usually move a
+coefficient; it moves the interval around it, and the interval is what the claim rests on. An
+interaction reported at p < 10^-16^ and an interaction that cannot be distinguished from zero are the
+same number with different error bars.
+
+## What the extent does to both questions {#sec-extent}
+
+Every result here is bounded by an extent chosen by a disturbance rather than by a design. The burn
+is about eight square kilometres and the regeneration plots total
+`r sprintf("%.1f", WIN_HA)` ha inside it. That is the ground on which beetle and fire co-occur at
+all, so it is not an arbitrary choice, but it is not a neutral one either.
+
+The consequences run in the same direction at both scales. Across the burn, lodgepole cover and
+elevation correlate at `r sprintf("%.2f", R_PL_EL)`, and the two cannot be separated: the companion
+study distinguishes them because 1,776 m of relief contains pine-poor ground at every height, and
+eight square kilometres does not [@murphy2026refugia]. Inside the burn the fitted elevation optimum
+lands at `r round(PEAK)` m, far below the range the clip spans, so an analyst working only here would
+report beetle attack rising with elevation without limit. The landscape-scale hump is not
+contradicted; it is out of view.
+
+The same collision governs the inference. A block bootstrap needs blocks large enough to contain the
+dependence and numerous enough to resample, and at both scales the extent caps the first requirement
+before the second is comfortable. Across the burn a 500 m block holds most of the dependence and
+affords `r SWEEP$Blocks[SWEEP$"Block side (m)" == BLOCK_M]` blocks; 1 km would afford eight. Inside
+the plots the residual range demands 75 to 100 m and the plots afford `r PP_OK_TXT`.
+This is the paper's own subject matter arriving in its own
+methods: the extent that makes a compound-disturbance question askable is the extent that decides how
+firmly it can be answered, and the two pull against each other.
+
+## Limitations {#sec-limits}
+
+**The interaction result is a null, and nulls have a floor.** Nothing here shows that beetle mortality
+and burn severity do not interact in their effect on regeneration. It shows that
+`r format(N_DATA, big.mark = ",")` seedlings across `r sprintf("%.1f", WIN_HA)` ha, arranged as
+clustered as this pattern is, cannot resolve a difference of differences across four
+severity-by-attack combinations. A larger or better distributed sample could return a different
+answer, and this study offers no estimate of how much larger.
+
+**Question A is answered in a reduced form.** The within-burn severity gradient is not the question
+the compound-disturbance literature asks, which is whether beetle-killed stands burn differently from
+stands that were not attacked. Recovering that comparison means rebuilding the classification over
+the unclipped landscape from the Landsat archive, which is a reprocessing task and one that re-treads
+the parent study's published methods.
+
+**Two beetle surfaces disagree and only one is documented.** The corrected grey-stage union is
+preferred throughout because it is three times denser than the published red-stage surface, observed
+throughout the perimeter, and derived by a script that survives [@murphy2026greyfix]. The red-stage
+surface is a substitution for a layer, `mpb_red_na.tif`, that is absent from the parent repository and
+was searched for without success. Where the two surfaces are used together their agreement is
+reported and their disagreement is not smoothed over.
+
+**The severity reference category is inherited, not chosen.** The published specification carries
+indicators for high and low severity, so moderate severity is pooled with unburned and unclassified
+ground into the reference. That pooled category is `r round(100 * REF_MOD / REF_N)` per cent moderate
+severity, which is the class carrying the most beetle attack. The specification is reproduced rather
+than repaired, because the object of the exercise was to test the published model rather than to
+replace it, but no fire coefficient reported here means quite what its label says.
+
+**The provincial survey is a coarse instrument.** It is used as an independent check on whether ground
+outside the perimeter carries beetle attack at all, which is a question it can answer, and not as a
+measurement of severity, which it cannot. Its polygons are drawn from an aircraft at a mapping scale
+far coarser than 30 m.
+
+## What would settle the open questions {#sec-next}
+
+Three things, in descending order of value against cost.
+
+The interaction test should be repeated where the extent is not the binding constraint. The
+requirement is not a bigger fire but a regeneration sample distributed across enough independent
+blocks that a product term has something to resolve, which given the dependence range measured here
+means a plot network rather than three contiguous plots.
+
+The published point process results should be reported with intervals that respect the clustering.
+This is inexpensive: the estimates are unchanged and the machinery is the block bootstrap used here.
+It affects which main effects in the parent study's Table 12 survive, and on the evidence of
+@tbl-ppblocks the answer is that two of them do.
+
+Recovering question A in its original form requires rebuilding the beetle classification over the
+unclipped landscape. That is worth doing only if the Landsat archive is being revisited for other
+reasons, and it should not be represented as an extension of this analysis.
+
+# Conclusions {#sec-conclusions}
+
+Compound disturbance is described as an interaction far more often than it is tested as one, and the
+gap between the description and the test is where this study lives.
+
+Three findings, stated at the confidence the data support.
+
+1. **A provenance result.** The beetle surfaces underlying the parent study stop at the fire
+   perimeter, in the source files, before classification. Any comparison of beetle attack across that
+   boundary measures the clip and not the forest. This is checkable in any study that inherits
+   rasters it did not build, and it is cheap to check.
+
+2. **A narrow ecological result.** Inside the burn, beetle attack is elevated at moderate severity
+   relative to low, by `r sprintf("%.3f", MOD_ADJ)` in log-odds after conditioning on host and
+   elevation, and it clears a spatial block bootstrap interval at every block size the extent
+   supports. Attack at high severity is not distinguishable from attack at low severity in any
+   specification.
+
+3. **A negative result about the interaction, and a positive one about why.** The beetle by fire
+   product term is decisive under the published Poisson likelihood and absent under inference that
+   accounts for the clustering the parent study itself documents. The coefficients are identical
+   either way. Only the intervals differ, and they differ by a factor of
+   `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`.
+
+The title of this paper is a description of the parent study and, on this evidence, a recommendation.
+Beetle and fire were modelled additively there. Nothing found here supports modelling them any other
+way with data of this extent, and the apparent support for doing so came from a likelihood that
+counted clustered seedlings as independent observations. The honest summary of a compound-disturbance
+interaction in this landscape is that it has not been demonstrated, that these data cannot
+demonstrate it, and that the confidence with which it can appear to have been demonstrated is the
+finding most worth carrying elsewhere.
 
 # References
 

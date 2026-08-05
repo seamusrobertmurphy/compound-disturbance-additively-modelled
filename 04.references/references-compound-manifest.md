@@ -1,14 +1,25 @@
 # Bibliography manifest
 
 Provenance for every entry in `references-compound.bib`: where it came from, what could not be
-extracted, and any disagreement between a filename and the text it names. Ten entries at
-2 August 2026.
+extracted, and any disagreement between a filename and the text it names. Thirteen entries at
+5 August 2026.
 
 ## Verified against the source document
 
 | Key | How verified | Notes |
 |---|---|---|
 | `murphy2026` | Text extracted from the publisher PDF, held locally and gitignored; see `grandfather-study/README.md` | Title, author order, affiliations, volume, article number and DOI all read from page 1. Note the published author order is Murphy, Leslie, Wilson, Banks, which differs from the pre-publication manuscript's Murphy, Leslie, Banks, Wilson |
+
+## Verified against the CrossRef record
+
+Added 5 August 2026 for the point process methods of `sec-interaction`. Neither PDF was read; the
+metadata is the publisher's own deposited record, queried by DOI, which is a stronger source than a
+PDF header for volume and pagination.
+
+| Key | How verified | Notes |
+|---|---|---|
+| `berman1992` | CrossRef API, DOI `10.2307/2347614` | The Berman-Turner device itself, which is how the parent study's point process trend is fitted. CrossRef gives the container title as the abbreviated *Applied Statistics*; expanded here to the journal's current full name |
+| `baddeley2000` | CrossRef API, DOI `10.1111/1467-842X.00128` | Queried by DOI rather than by title. A title search returns the 1998 conference abstract of the same name in *Advances in Applied Probability* first, which is a different item and the wrong one to cite |
 
 ## Carried across from the sibling bibliography
 
