@@ -392,13 +392,50 @@ All three disqualify us, and none of it matters because the subscription route c
 The analysis is complete and nothing below changes a number. The work is compliance, packaging and
 three author decisions.
 
+### 0. Revisions the comparator survey generated, which come first
+
+From `CJFR-COMPARATOR-PAPERS-2026-08-05.md`, sixteen CJFR papers, six read in full. These are
+substantive rather than cosmetic and several change what the manuscript argues.
+
+1. **Take the Introduction from 442 words to about 900 and from four citations to about fifteen.**
+   The closest analogue in the journal runs a 930-word Introduction against fifty references. Ours
+   asserts a contested literature and cites nobody for the contest. Nine CJFR papers are listed in
+   the comparator file, and the contested beetle-to-fire literature the task request flags is still
+   missing. This is the highest-value single edit available.
+2. **Cite Donato et al. 2009 in the Discussion.** They excluded interaction terms from their
+   candidate set "because of modest sample size", in this journal, in a highly cited paper. That is
+   our conclusion reached by judgement where we reach it by measurement, and it converts our result
+   from a complaint about one model into a caution the journal already exercises.
+3. **Cite Magnussen et al. 2017 in the Discussion.** It already reports that omitting residual
+   spatial autocorrelation makes confidence intervals too narrow. Same journal, same mechanism.
+4. **Add a passage in Materials on how the prior disturbance was dated.** Every comparator has one
+   and we have none. The outbreak window, the annual classifications as the dating instrument, the
+   one to eleven year beetle-to-fire interval, and the drift that interval admits.
+5. **Explain the Berman-Turner device properly and consider a conventional cross-check.** No paper in
+   the comparator set fits a spatial point process; the nearest antecedents are a nearest-neighbour
+   statistic and subplot occupancy. A referee here has no prior for it. Reporting a conventional
+   density regression that agrees would cost little and buy a lot.
+6. **Fix the interaction register in the Introduction.** This journal grants interaction language to
+   designed factorials and mostly withholds it from observational regressions. Say the product term
+   is or is not retained and what its interval covers, not that the agents do or do not interact.
+   The Conclusions already do this; the Introduction is looser.
+7. **Keep `tbl-ppsupport` in the main text.** The closest analogue's central weakness is that it
+   never reports how many pixels carry its headline contrast, and gives two irreconcilable figures
+   for it. Reporting stratum sizes is a strength, not a candidate for supplementary.
+8. **Reset the length target.** Method-heavy and landscape-scale papers in this journal run 18 to 22
+   pages with 70 to 95 references, not the set median of 11 and 46.
+
 ### 1. Compliance, in the order it should be done
 
 1. **Cut the abstract from 323 words to 200.** The hard limit for every CJFR article type. This is
    the only limit the manuscript actually breaks on length.
-2. **Split 16 tables into a main set and supplementary.** No numeric cap is stated, but the guideline
-   is that "all figures and tables should be necessary to support the text", and sixteen will read as
-   padding. A defensible main set is the provenance evidence, the conditioned gradient, the
+2. **Rebalance 16 tables and 2 figures.** The comparator papers run five to nine figures against two
+   to six tables and we are the inverse, with eighteen floats in total against a maximum of thirteen
+   anywhere in the set. Converting the two block-bootstrap sweeps into coefficient plots, the two
+   correlograms into one figure, and the three-record severity gradient into a point plot lands the
+   manuscript at six figures and eleven tables, inside the comparator range on both counts. The
+   guideline is that "all figures and tables should be necessary to support the text", and sixteen
+   tables will read as padding. A defensible main set is the provenance evidence, the conditioned gradient, the
    reproduction of the published fit, the product terms and the block sweep. The decode, footprint,
    correlogram and support tables are supplementary. **This is a judgement about which tables carry
    the argument, so make it deliberately rather than by counting.** Supplementary items renumber as

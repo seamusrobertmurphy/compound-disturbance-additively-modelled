@@ -85,6 +85,10 @@ Median 11 published pages (range 9 to 22) and **46 references** (range 19 to 130
 from 2020 onward run 14, 15, 20 and 22 pages with 115, 30, 76 and 96 references, so the journal's
 recent output is longer and more heavily referenced than its older output.
 
+The split is by paper type rather than by date. Conventional field studies run 9 to 11 pages;
+method-heavy or landscape-scale papers run 15 to 22. **This manuscript is the second kind**, so the
+target to aim at is roughly 18 to 22 pages and 70 to 95 references, not the set median.
+
 ## Where this manuscript sits
 
 | Measure | This manuscript | Comparator median | Verdict |
@@ -243,6 +247,57 @@ the manuscript's stronger features rather than a candidate for supplementary.
 size and no p-value. Its only numbers are the scale of the study system. Results are stated
 qualitatively with one directional word and one differentiating phrase. Ours must fall from 323 words
 to 200, and this is the model for how.
+
+## Five findings from the wider set that change what we should write
+
+Four further full texts were obtained from US Forest Service repositories, which none of the open
+access aggregators index: Page 2012, Donato 2009, Meyer 2016 and Estabrook 2025. Unpaywall, OpenAlex
+and Semantic Scholar all report these as closed, so agency repositories are worth checking directly
+whenever a paper has a federal co-author.
+
+**1. Nothing in this journal fits a spatial point process, so ours needs more scaffolding than we
+have given it.** The closest antecedents are Donato's nearest-neighbour spatial C-statistic and
+Campbell and Antos's occupancy of 5 m by 5 m subplots, both of which are quadrat or distance
+summaries that a point process subsumes. @sec-ppframe currently explains the Berman-Turner device in
+two sentences and assumes the reader knows what a quadrature scheme is. It should not.
+**Consider also reporting a conventional density regression alongside the point process**, showing
+the two agree, because a referee here will have no prior for the unfamiliar one and every reason to
+trust the familiar one.
+
+**2. Donato et al. 2009 declined to fit interaction terms, in this journal, for our exact reason.**
+Their sentence is that models with more than five predictors or with interaction terms "were excluded
+from analysis because of modest sample size". That is a highly cited CJFR paper reaching our
+conclusion by judgement where we reach it by measurement. **It belongs in the Discussion.** It turns
+our result from a complaint about one published model into the demonstration of a caution the
+journal's own literature already exercises.
+
+**3. Interaction language is granted conditionally here and we should match the register.** Designed
+factorials get it outright, which is how Bansal et al. 2014 can speak of interactive effects.
+Observational regressions mostly decline it: Estabrook et al. say severity is "contingent on weather"
+in the abstract and then fit weather as main effects only. The manuscript should say that the product
+term is or is not retained, and what its interval covers, rather than that beetle and fire do or do
+not interact. Our Conclusions currently do this well; the Introduction is looser.
+
+**4. Every comparator states how it dated the prior disturbance, and we do not.** Kulakowski and
+Veblen reconstruct outbreak timing from growth releases in surviving non-host trees. Meyer et al.
+rebuild pre-attack stand structure by adding trees dead seven years or less back into the live tally.
+Estabrook et al. discuss at length how the remeasurement lag in the inventory degrades their pre-fire
+condition. **We have no equivalent statement.** The outbreak window is 2005 to 2014 and the fire is
+2015, the annual classifications are the dating instrument, and @sec-perimeter already establishes
+that two of those annual files use an unrelated code set. A short passage in Materials on how
+precisely beetle state is dated, and how much drift a one to eleven year interval admits, closes an
+obvious referee question.
+
+**5. A negative applied result is publishable here, and recently was.** Estabrook et al. 2025 report
+an AUC of 0.72 to 0.73 as an acceptable severity model and are then candid that the mapped
+application failed, at 55.9 per cent accuracy with residual Moran's I of about 0.78. That passed
+review in this journal this year. It is both a calibration for what counts as adequate performance
+and a licence for our own negative results to be stated plainly rather than buried.
+
+One further note on their method, because it bears on our framing: among the six predictors Estabrook
+retained is **basal area of standing dead trees**. The beetle-to-fire pathway is already in the
+journal's recent burn-severity literature, carried as a stand-structure covariate rather than as a
+disturbance history. Our framing should acknowledge that rather than present the link as unexamined.
 
 ## The article type question, settled by observation
 
