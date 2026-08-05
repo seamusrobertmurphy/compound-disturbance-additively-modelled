@@ -98,9 +98,9 @@ Every figure and table below is reproduced from the current render, in the order
 
 *The clip, mapped, at 1:50 000 in UTM zone 11N (EPSG:32611) with a WGS 84 graticule labelled on all four sides. Top left, the published red-stage surface, which stops at the classified burn. Top right, the corrected grey-stage union, which reaches the fire perimeter and stops there. Bottom left, the burn severity classes. Bottom right, the independent Aerial Overview Survey, which does not stop at anything. The unburned ground in the two upper panels is empty because it was never observed, not because it was never attacked.*
 
-### Figure 4
+### Figure 3
 
-![Figure 4](03.outputs/PNG/fig-gradient-2.png)
+![Figure 3](03.outputs/PNG/fig-gradient.png)
 
 *Beetle attack across burn severity within the fire perimeter, in the two local surfaces and in the independent survey. The three records share no common measurement pathway and all three peak at moderate severity. Point labels give the number of cells in each class.*
 
@@ -152,9 +152,9 @@ Every figure and table below is reproduced from the current render, in the order
 | Implied optimum of the fitted quadratic | 503 m |
 | Landscape-scale optimum, companion study | about 1,430 m |
 
-### Figure 6
+### Figure 4
 
-![Figure 6](03.outputs/PNG/fig-blocks-2.png)
+![Figure 4](03.outputs/PNG/fig-blocks.png)
 
 *The moderate-against-low severity coefficient under block bootstraps of increasing block size. The estimate is fixed; only the interval changes, and the number of blocks each size affords is printed above it. The extent caps the largest usable block, not the conclusion.*
 
@@ -212,14 +212,14 @@ Every figure and table below is reproduced from the current render, in the order
 | MPB_R:Fire_H | 0.298 | [-0.046, 0.643] |  |  |
 | MPB_R:Fire_L | 0.939 | [0.667, 1.211] | excludes zero |  |
 
-### Figure 8
+### Figure 5
 
-![Figure 8](03.outputs/PNG/fig-correlogram-2.png)
+![Figure 5](03.outputs/PNG/fig-correlogram.png)
 
 *Residual dependence at the two scales the study works at. Left, the conditioned model of Section 4 across the burn, where dependence has largely decayed by 500 m. Right, the fit with product terms over the quadrature points inside the regeneration plots, where it has decayed by about 100 m. The two panels are the same obstacle two orders of magnitude apart, and each sets the block sizes tried at its own scale.*
 
-### Figure 10
+### Figure 6
 
-![Figure 10](03.outputs/PNG/fig-interaction-2.png)
+![Figure 6](03.outputs/PNG/fig-interaction.png)
 
 *The four product terms and the main effects they modify, under the Poisson likelihood the published model is fitted with and under a spatial block bootstrap across block sizes spanning the residual range. The estimate is the same in every case; only the interval changes. Three of the four product terms exclude zero under the Poisson likelihood and none excludes it at any block size.*
