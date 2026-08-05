@@ -76,16 +76,23 @@ Measured against the current render on 5 August 2026.
 | Requirement | Limit | Manuscript | Status |
 |---|---|---|---|
 | Abstract | 200 words, all article types | 323 | **over by 123** |
-| Body, Introduction through end of Discussion | 6,000 words | 5,323 | ok, 677 to spare |
-| References | 50 | 13 | ok |
-| Tables and figures | no stated numeric cap; "all figures and tables should be necessary to support the text" | 16 tables, 2 figures | **needs a main and supplementary split** |
+| Body, Introduction through end of Discussion | 6,000 words | 6,428 | **over by 428** |
+| References | 50 | 18 entries, 15 cited | ok, and room for more |
+| Tables and figures | no stated numeric cap; "all figures and tables should be necessary to support the text" | 17 tables, 2 figures | **needs rebalancing toward figures, and a supplementary split** |
 | Line numbering | required on all submissions | absent | **to add** |
 | Citation style | Harvard, in-text (author year), alphabetical, unnumbered, DOIs and hyperlinks included | APA | **to switch** |
 | Editable table format | Word or Excel, one data point per cell | rendered from code | **to check on the docx render** |
 | Language, spacing, layout | English or French, double-spaced, single column, page numbers, 8.5x11 or A4 | docx render exists | to verify |
 
-The word count is the pleasant surprise. The manuscript fits the Research article limit as written,
-with room, because the analysis lives in tables rather than in prose.
+**Updated 5 August 2026, after the comparator survey.** The body was 5,323 words when this table was
+first written and is now 6,428, because integrating the survey's recommendations added a dating
+section, a Donato precedent in the Discussion, an interaction-register passage in the Introduction
+and a framing paragraph on negative results. That is the right content and it puts the manuscript
+over the limit. Roughly 430 words must come out, and the guidelines warn that "manuscripts that are
+considered too long will be returned to the author for shortening before peer review". The
+Introduction still needs to grow, so the reduction has to come from elsewhere: the three analysis
+sections carry the most compressible prose, and several table captions are doing work the text
+repeats.
 
 ## Required statements, none of which the manuscript currently carries
 

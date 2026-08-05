@@ -21,6 +21,19 @@ PDF header for volume and pagination.
 | `berman1992` | CrossRef API, DOI `10.2307/2347614` | The Berman-Turner device itself, which is how the parent study's point process trend is fitted. CrossRef gives the container title as the abbreviated *Applied Statistics*; expanded here to the journal's current full name |
 | `baddeley2000` | CrossRef API, DOI `10.1111/1467-842X.00128` | Queried by DOI rather than by title. A title search returns the 1998 conference abstract of the same name in *Advances in Applied Probability* first, which is a different item and the wrong one to cite |
 
+Five comparator papers added 5 August 2026 from the survey in
+`05.tasks/CJFR-COMPARATOR-PAPERS-2026-08-05.md`. All are in the target journal. Author lists, volume,
+issue and pagination are the publisher's deposited record, queried by DOI. Four of the five were also
+read in full from open repository copies, so the metadata is corroborated by the documents.
+
+| Key | How verified | Notes |
+|---|---|---|
+| `donato2009` | CrossRef API, DOI `10.1139/X09-016`; full text read | Cited for its explicit exclusion of interaction terms on sample-size grounds, which is the precedent the Discussion rests on |
+| `bansal2014` | CrossRef API, DOI `10.1139/cjfr-2014-0112` | Abstract only. Cited only for the register point that a designed factorial earns interaction language, which the abstract establishes |
+| `estabrook2025` | CrossRef API, DOI `10.1139/cjfr-2024-0305`; full text read | CrossRef reports no issue number; the journal moved to continuous publication in January 2025 and the article-level range 1 to 20 is the real pagination |
+| `kulakowski2006` | CrossRef API, DOI `10.1139/x06-182` | Abstract only. Cited for its dendroecological dating of the outbreak, which the abstract describes in enough detail to support the claim made |
+| `meyer2016` | CrossRef API, DOI `10.1139/cjfr-2015-0464`; full text read | Cited for reconstructing pre-attack structure by returning recently dead trees to the live tally |
+
 ## Carried across from the sibling bibliography
 
 The following were verified during the companion study and are copied verbatim rather than

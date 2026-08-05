@@ -392,33 +392,66 @@ All three disqualify us, and none of it matters because the subscription route c
 The analysis is complete and nothing below changes a number. The work is compliance, packaging and
 three author decisions.
 
+### Comparator recommendations integrated (5 August 2026)
+
+Four of the survey's recommendations are now in the manuscript, with five verified CJFR references
+added for them: `donato2009`, `bansal2014`, `estabrook2025`, `kulakowski2006` and `meyer2016`. Cited
+works went from 9 to 15 and `wulder2006red` is no longer sitting uncited.
+
+**A dating section, `sec-dating`, which the manuscript did not have.** Every comparator states how it
+dated the prior disturbance and this one stated nothing. Writing it turned up a fact the study had
+never derived. The task request noted in passing that the 2008 and 2010 annual files are empty of
+code 44; nobody had checked what that costs. **The grey-stage union rests on five annual
+observations across a seven-year window, not seven.** With red-attack foliage detectable for one to
+three years either side of each observation, the union has to be treated as undated, and the section
+now says so before any result rather than after.
+
+**The assertion caught me writing the wrong claim.** The first draft asserted that the years carrying
+the code are exactly the modelling window. They are not, and `stopifnot` said so. Because the YAML
+sets `error: true`, the failure printed into the rendered document rather than halting the render, so
+a visible `Error: ! ... is not TRUE` sat in the output. Two lessons. The load-bearing claim was the
+weaker one, that no year *outside* the window contributes, and that is what is now asserted. And
+**`error: true` means a failed `stopifnot` is a printed error, not a stopped render**, so the render
+log cannot be trusted to surface it; grep the rendered HTML for `Error: !`.
+
+**A Donato precedent in the Discussion.** @donato2009 excluded interaction terms from their candidate
+set because the sample was too modest to support them. That reframes the result: a caution the
+journal's literature already exercises by judgement, quantified here by measurement.
+
+**Interaction register tightened in the Introduction.** The manuscript now says it reports whether the
+product term is retained and what interval its coefficient carries, and does not say the agents
+interact. Contrasted with @bansal2014, whose designed factorial earns the stronger language.
+
+**A framing paragraph on negative results** opening the Limitations, citing @estabrook2025 reporting
+a failed mapping application candidly in this journal this year.
+
+**One consequence to deal with.** The body is now 6,428 words against a 6,000-word limit, up from
+5,323. The content is right and the limit is real, so roughly 430 words must come out of the three
+analysis sections while the Introduction still grows. See the compliance table in
+`CJFR-GUIDELINES-VERIFIED-2026-08-05.md`.
+
 ### 0. Revisions the comparator survey generated, which come first
 
 From `CJFR-COMPARATOR-PAPERS-2026-08-05.md`, sixteen CJFR papers, six read in full. These are
 substantive rather than cosmetic and several change what the manuscript argues.
 
-1. **Take the Introduction from 442 words to about 900 and from four citations to about fifteen.**
+0. **Cut about 430 words from the three analysis sections.** The body is 6,428 against a 6,000 limit
+   after the integrations above, and the Introduction still has to grow. This is now the binding
+   constraint on every other content addition.
+1. **Take the Introduction from 539 words to about 900 and from six citations to about fifteen.**
    The closest analogue in the journal runs a 930-word Introduction against fifty references. Ours
    asserts a contested literature and cites nobody for the contest. Nine CJFR papers are listed in
    the comparator file, and the contested beetle-to-fire literature the task request flags is still
    missing. This is the highest-value single edit available.
-2. **Cite Donato et al. 2009 in the Discussion.** They excluded interaction terms from their
-   candidate set "because of modest sample size", in this journal, in a highly cited paper. That is
-   our conclusion reached by judgement where we reach it by measurement, and it converts our result
-   from a complaint about one model into a caution the journal already exercises.
+2. **Done.** Donato, Bansal, Estabrook, Kulakowski and Meyer are integrated; see the entry above.
 3. **Cite Magnussen et al. 2017 in the Discussion.** It already reports that omitting residual
    spatial autocorrelation makes confidence intervals too narrow. Same journal, same mechanism.
-4. **Add a passage in Materials on how the prior disturbance was dated.** Every comparator has one
-   and we have none. The outbreak window, the annual classifications as the dating instrument, the
-   one to eleven year beetle-to-fire interval, and the drift that interval admits.
+4. **Done.** `sec-dating` covers this and turned up the five-of-seven annual observations finding.
 5. **Explain the Berman-Turner device properly and consider a conventional cross-check.** No paper in
    the comparator set fits a spatial point process; the nearest antecedents are a nearest-neighbour
    statistic and subplot occupancy. A referee here has no prior for it. Reporting a conventional
    density regression that agrees would cost little and buy a lot.
-6. **Fix the interaction register in the Introduction.** This journal grants interaction language to
-   designed factorials and mostly withholds it from observational regressions. Say the product term
-   is or is not retained and what its interval covers, not that the agents do or do not interact.
-   The Conclusions already do this; the Introduction is looser.
+6. **Done.** The Introduction now states the narrower claim and contrasts it with a designed factorial.
 7. **Keep `tbl-ppsupport` in the main text.** The closest analogue's central weakness is that it
    never reports how many pixels carry its headline contrast, and gives two irreconcilable figures
    for it. Reporting stratum sizes is a strength, not a candidate for supplementary.

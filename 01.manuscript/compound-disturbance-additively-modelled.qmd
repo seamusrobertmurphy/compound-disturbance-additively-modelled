@@ -198,7 +198,7 @@ This study asks the two questions that separation implies.
 
 The first is whether prior beetle mortality is associated with subsequent burn severity in this landscape. The outbreak ran from 2005 to 2014 and the fire burned in 2015, so the causal arrow runs one way only, from beetle to fire, and never the reverse. The literature on the question is contested rather than empty, so what novelty there is rests on the particular landscape and on the treatment of confounding rather than on the question being new.
 
-The second is whether beetle and fire act additively on regeneration or interact. Here the test is direct: refit the published point process model with the beetle by fire product term and compare it against the published additive fit.
+The second is whether a beetle by fire product term is supported in a model of regeneration. The test is direct: refit the published point process model with the product term and compare it against the published additive fit. The wording matters and is kept narrow throughout. A designed factorial can license the language of interaction outright, as @bansal2014 do in crossing burn severity with canopy cover and reporting effects that are conditional by construction. An observational fit over ground that neither treatment nor randomisation touched cannot, and the convention in this literature is accordingly more careful: @estabrook2025 describe burn severity as contingent on weather and then fit weather as main effects. This study reports whether the product term is retained and what interval its coefficient carries. It does not report that the two agents interact.
 
 The first question turned out to require a prior question, which is whether the surfaces that would answer it can answer it. @sec-provenance reports that check. It is negative, it is decisive, and it changes the shape of question one before any ecology is attempted.
 
@@ -209,6 +209,77 @@ The second question turned out to require a prior question too, and a less obvio
 ## Study area and disturbance history {#sec-area}
 
 The Darkwoods Conservation Area lies in the southern Selkirk Mountains of southeastern British Columbia. A mountain pine beetle outbreak affected the property through the decade to 2014, and the Mt Midgeley wildfire burned part of it in 2015, producing a mixed-severity mosaic. The beetle to fire interval across the burned area ranges from one to eleven years with a median of seven [@murphy2026].
+
+## How the beetle state is dated, and how precisely {#sec-dating}
+
+An association between a prior disturbance and a later one is only as good as the dating of the
+prior one, so it is worth being explicit about the instrument and its resolution. Studies of this
+kind normally say so: @kulakowski2006 date a nineteenth-century outbreak from coincident growth
+releases in surviving non-host trees, @meyer2016 reconstruct pre-attack stand structure by returning
+recently dead trees to the live tally, and @estabrook2025 discuss at length how the remeasurement
+interval of a forest inventory degrades its record of pre-fire condition.
+
+Here the dating instrument is the annual Landsat classification. There are
+`r length(ANN_ALL)` annual files, and attack in a given cell is the year of the first file that
+records it. That gives a nominal resolution of one year and a real resolution that is coarser, for
+three reasons the manuscript can bound but not remove.
+
+```{r}
+#| label: tbl-annual
+#| echo: true
+#| tbl-cap: "The annual classifications that date beetle attack, and the aerial-survey code the grey-stage union is built from. There is no file for the missing year, and the two most recent files carry none of the code at all, so the window that can be dated closes earlier than the file list suggests."
+
+## The claim that the series is two incompatible products is load-bearing for the
+## window used everywhere downstream, so it is derived here rather than asserted.
+## GREY_CODE is the aerial-survey red-attack class the corrected union is the
+## OR of; the deprecated rebuild tested for 1, which is a sparse trace class.
+GREY_CODE <- 44L
+yr_of <- function(f) as.integer(sub(".*?([0-9]{4})\\.tif$", "\\1", f))
+ANN_TAB <- tibble(Year = vapply(ANN_ALL, yr_of, integer(1)),
+                  `Cells carrying the code` =
+                    vapply(ANN_ALL, function(f) sum(vals(rast(f)) == GREY_CODE, na.rm = TRUE),
+                           integer(1))) |>
+  arrange(Year) |>
+  mutate(`In the dating window` = ifelse(`Cells carrying the code` > 0, "yes", ""))
+
+YR_ALL   <- ANN_TAB$Year
+YR_GAP   <- setdiff(seq(min(YR_ALL), max(YR_ALL)), YR_ALL)
+YR_EMPTY <- ANN_TAB$Year[ANN_TAB$`Cells carrying the code` == 0]
+YR_LIVE  <- setdiff(YR_ALL, YR_EMPTY)
+## The load-bearing claim is that no year outside the modelling window contributes
+## to the union, not that every year inside it does. Two years inside it do not,
+## which is reported below rather than asserted away.
+stopifnot(all(YR_LIVE %in% ANN_YEARS))
+show(ANN_TAB, "tbl-annual", "rrl")
+```
+
+Red-attack foliage is detectable for roughly one to three years after the attack that produced it
+[@wulder2006red], so a first detection dates the crown-colour change rather than the attack, and
+places it within a window rather than on a year.
+
+The series is also thinner than a count of its files suggests, in three separate ways.
+`r length(ANN_ALL)` files exist, but there is none for `r paste(YR_GAP, collapse = " or ")`. The two
+most recent, for `r paste(YR_EMPTY[YR_EMPTY > max(ANN_YEARS)], collapse = " and ")`, carry the
+aerial-survey code in not one cell, because they are a different product on a different code set and
+contribute nothing to the union; the window therefore closes at `r max(ANN_YEARS)` rather than at
+`r max(YR_ALL)`, and an analyst who read the file list as a `r min(YR_ALL)` to `r max(YR_ALL)` series
+would be wrong. **And two files inside the window, for
+`r paste(YR_EMPTY[YR_EMPTY <= max(ANN_YEARS)], collapse = " and ")`, are likewise empty of the code.**
+So the grey-stage union rests on `r length(YR_LIVE)` annual observations spread across a
+`r max(ANN_YEARS) - min(ANN_YEARS) + 1`-year window, not on
+`r max(ANN_YEARS) - min(ANN_YEARS) + 1` of them. The assertion above fails the render if any year
+outside the window ever begins to contribute.
+
+The response used throughout is that union, and it is deliberately undated: it records whether a cell
+was ever attacked across `r min(ANN_YEARS)` to `r max(ANN_YEARS)`, not when. Given two empty years
+inside the window and a detection window of one to three years on either side of each observation
+that is not empty, that is the honest way to use these surfaces.
+
+The consequence is a limit on what can be asked, and it is worth stating before any result rather
+than after. **Nothing in this study turns on the beetle-to-fire interval**, which spans one to eleven
+years and is not resolved by these surfaces at anything finer than the window itself. The analysis
+asks whether a cell carried attack before the fire, not how long before, and a reader should not read
+the severity gradient of @sec-conditioning as a statement about timing.
 
 ## Local classified surfaces {#sec-local}
 
@@ -1572,6 +1643,18 @@ coefficient; it moves the interval around it, and the interval is what the claim
 interaction reported at p < 10^-16^ and an interaction that cannot be distinguished from zero are the
 same number with different error bars.
 
+**The caution this implies is not new, and the more careful practice already exists.** Modelling
+conifer regeneration after a large mixed-severity fire, @donato2009 excluded from their candidate set
+any model carrying more than five predictors or any interaction term, on the stated ground that the
+sample was too modest to support them, and reported relative importance among additive predictors
+instead. That is a judgement made in advance, on a study of comparable design and larger extent, and
+it reaches the conclusion this paper reaches by measurement. The difference is instructive rather
+than flattering to us: a product term excluded on principle costs nothing and leaves no false claim
+behind, whereas a product term admitted and then read through the wrong likelihood produces a
+confident number that has to be withdrawn later. The result reported here is therefore better
+understood as a quantification of a discipline that this literature already exercises than as an
+objection to one study that failed to.
+
 ## What the extent does to both questions {#sec-extent}
 
 Every result here is bounded by an extent chosen by a disturbance rather than by a design. The burn
@@ -1597,6 +1680,14 @@ methods: the extent that makes a compound-disturbance question askable is the ex
 firmly it can be answered, and the two pull against each other.
 
 ## Limitations {#sec-limits}
+
+Four of this study's five results are negative, and they are reported at the same length and in the
+same register as the one that is not. That is a deliberate choice rather than an apology. The same
+practice is visible in recent work on burn severity in this literature: @estabrook2025 report a
+severity model with acceptable discrimination and then state plainly that the map built from it
+performed poorly, with a residual spatial structure their own diagnostic detected. A negative applied
+result reported clearly is more useful than a positive one reported without its diagnostics, and the
+limitations below are set out in that spirit.
 
 **The interaction result is a null, and nulls have a floor.** Nothing here shows that beetle mortality
 and burn severity do not interact in their effect on regeneration. It shows that

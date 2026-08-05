@@ -14,6 +14,22 @@ Every figure and table below is reproduced from the current render, in the order
 
 ### Table 1
 
+*The annual classifications that date beetle attack, and the aerial-survey code the grey-stage union is built from. There is no file for the missing year, and the two most recent files carry none of the code at all, so the window that can be dated closes earlier than the file list suggests.*
+
+| Year | Cells carrying the code | In the dating window |
+| ---: | ---: | :--- |
+| 2005 | 534 | yes |
+| 2006 | 1530 | yes |
+| 2007 | 573 | yes |
+| 2008 | 0 |  |
+| 2009 | 324 | yes |
+| 2010 | 0 |  |
+| 2011 | 137 | yes |
+| 2013 | 0 |  |
+| 2014 | 0 |  |
+
+### Table 2
+
 *Footprints of the local classified surfaces against the terrain grid. Every disturbance surface is confined to a rectangle of roughly eight square kilometres; the terrain grid covers thirty-four times that area.*
 
 | Surface | Rows | Cols | Cell (m) | Width (km) | Height (km) | Extent (km2) |
@@ -26,7 +42,7 @@ Every figure and table below is reproduced from the current render, in the order
 | Burn severity, classified | 134 | 66 | 30.00 | 1.98 | 4.02 | 7.96 |
 | Beetle by fire intersection | 136 | 67 | 29.56 | 1.98 | 4.02 | 7.96 |
 
-### Table 2
+### Table 3
 
 *Decoding the classified burn severity raster against its own binary class masks, and against the fire perimeter. The integer codes are not in severity order. Code 16 falls inside the perimeter but in none of the three severity classes.*
 
@@ -44,7 +60,7 @@ Every figure and table below is reproduced from the current render, in the order
 
 *The study area at three nested scales. (a) Regional setting, with the Canada and United States border and provincial and state boundaries. (b) The terrain grid, the rectangle shared by every disturbance raster, and the fire perimeter inside it. (c) The burn itself with its classified severity and the three four-hectare regeneration plots that carry the point pattern of Section 5. Each panel is drawn to the stated representative fraction at the reproduction width given in the text, carries a true-north arrow, and is bounded by a WGS 84 graticule labelled on all four sides.*
 
-### Table 3
+### Table 4
 
 *Where each beetle surface stops, against the fire perimeter, on the native beetle grid. The annual rasters carry nodata over almost the whole area outside the perimeter, and the two derived surfaces inherit it.*
 
@@ -54,7 +70,7 @@ Every figure and table below is reproduced from the current render, in the order
 | Corrected grey stage, 2005 to 2011 | 1541 | 1540 | 1 | union of code 44 |
 | Red stage, as published | 493 | 493 | 0 | substituted for a missing layer |
 
-### Table 4
+### Table 5
 
 *The two surfaces against the classified severity footprint. Grey attack is recorded throughout the perimeter; red attack is confined to the three classified severity classes and is absent from the cells inside the perimeter that no class mask claims.*
 
@@ -64,7 +80,7 @@ Every figure and table below is reproduced from the current render, in the order
 | Inside perimeter, unclassified severity | 1367 | 99.7 | 33.1 | 0.0 |
 | Inside the classified severity footprint | 4136 | 99.5 | 26.3 | 11.9 |
 
-### Table 5
+### Table 6
 
 *The two local surfaces against the independent Aerial Overview Survey, by burn severity class. Local rates are computed only over cells the annual rasters actually observe. The survey finds no shortage of beetle attack outside the burn, and neither does the small observed sliver of the local data.*
 
@@ -82,7 +98,7 @@ Every figure and table below is reproduced from the current render, in the order
 
 *The clip, mapped, at 1:50 000 in UTM zone 11N (EPSG:32611) with a WGS 84 graticule labelled on all four sides. Top left, the published red-stage surface, which stops at the classified burn. Top right, the corrected grey-stage union, which reaches the fire perimeter and stops there. Bottom left, the burn severity classes. Bottom right, the independent Aerial Overview Survey, which does not stop at anything. The unburned ground in the two upper panels is empty because it was never observed, not because it was never attacked.*
 
-### Table 6
+### Table 7
 
 *Beetle attack across burn severity within the fire perimeter, in the two local surfaces and in the independent survey. All three peak at moderate severity and fall at high.*
 
@@ -92,7 +108,7 @@ Every figure and table below is reproduced from the current render, in the order
 | Moderate | 1403 | 34.6 | 20.7 | 40.6 | 1449 |
 | High | 553 | 27.7 | 12.1 | 33.1 | 1408 |
 
-### Table 7
+### Table 8
 
 *Attack, host cover and elevation by burn severity class, and the crude contrast between stands carrying lodgepole and stands without it.*
 
@@ -107,7 +123,7 @@ Every figure and table below is reproduced from the current render, in the order
 | Lodgepole absent | 1973 | 15.3 | 0.0 | 1258 |
 | Lodgepole present | 3440 | 35.3 | 31.3 | 1498 |
 
-### Table 8
+### Table 9
 
 *Burn severity coefficients on grey-stage attack, as log-odds against low severity, crude and then conditioned on host presence and elevation. Intervals are spatial block bootstrap percentiles at 500 m blocks. An interval that excludes zero is marked.*
 
@@ -128,7 +144,7 @@ Every figure and table below is reproduced from the current render, in the order
 | ec | 0.415 | [0.243, 0.649] | clears zero |  |
 | I(ec^2) | 0.023 | [-0.047, 0.120] |  |  |
 
-### Table 9
+### Table 10
 
 *The elevation term inside the burn, against the landscape-scale form the companion study reports. The quadratic term is negligible and its implied optimum falls far outside the elevation range the burn spans, so within this clip the relationship is monotone.*
 
@@ -140,7 +156,7 @@ Every figure and table below is reproduced from the current render, in the order
 | Implied optimum of the fitted quadratic | 503 m |
 | Landscape-scale optimum, companion study | about 1,430 m |
 
-### Table 10
+### Table 11
 
 *The moderate-against-low severity coefficient under block bootstraps of increasing block size, with the number of blocks each affords. The estimate is fixed; only the interval changes. The extent caps the largest usable block, not the conclusion.*
 
@@ -151,7 +167,7 @@ Every figure and table below is reproduced from the current render, in the order
 | 500 | 27 | 0.416 | [0.101, 0.731] | clears zero |
 | 750 | 14 | 0.416 | [0.020, 0.747] | clears zero |
 
-### Table 11
+### Table 12
 
 *Residual correlogram of the conditioned model. Dependence is strong within 100 m and has largely decayed by 500 m, which is the basis for the block sizes tried above.*
 
@@ -165,7 +181,7 @@ Every figure and table below is reproduced from the current render, in the order
 | (800,1.2e+03] | 0.020 |
 | (1.2e+03,Inf] | -0.055 |
 
-### Table 12
+### Table 13
 
 *The published additive trend, as reported by the parent study’s final refit and as recomputed here from the same rasters. The comparison is the licence for everything that follows: a product term added to a model that did not reproduce would test nothing.*
 
@@ -181,7 +197,7 @@ Every figure and table below is reproduced from the current render, in the order
 | Fire_H | 0.2071 | 0.2071 | 0 |
 | Fire_L | 0.3952 | 0.3952 | 0 |
 
-### Table 13
+### Table 14
 
 *Quadrature points inside the three plots, by burn severity class and beetle surface. The published fit’s reference category is the union of the two rows that carry no severity indicator, so it pools moderate severity with unburned and unclassified ground.*
 
@@ -192,7 +208,7 @@ Every figure and table below is reproduced from the current render, in the order
 | High | 288 | 2.88 | 68 | 54 |  |
 | Inside perimeter, unclassified | 118 | 1.18 | 31 | 0 | yes |
 
-### Table 14
+### Table 15
 
 *The additive trend as published, and the same trend with the four beetle by fire product terms added. Intervals are the naive Poisson intervals the published likelihood implies. On these the interaction is emphatic and three of the four product terms exclude zero.*
 
@@ -219,7 +235,7 @@ Every figure and table below is reproduced from the current render, in the order
 | MPB_R:Fire_H | 0.298 | [-0.046, 0.643] |  |  |
 | MPB_R:Fire_L | 0.939 | [0.667, 1.211] | excludes zero |  |
 
-### Table 15
+### Table 16
 
 *Residual correlogram of the fit with product terms, over the quadrature points. Dependence is strong within one 30 m cell and has decayed by about 100 m, which sets the block sizes tried below.*
 
@@ -233,7 +249,7 @@ Every figure and table below is reproduced from the current render, in the order
 | (150,200] | -0.342 |
 | (200,Inf] | -0.014 |
 
-### Table 16
+### Table 17
 
 *The four product terms and the main effects they modify, under a spatial block bootstrap across block sizes spanning the residual range. The estimates are fixed; only the intervals change. No product term excludes zero at any block size tried.*
 
