@@ -7,19 +7,19 @@ author:
     email: seamusrobertmurphy@gmail.com
 abstract: >
   Compound disturbance is routinely described as an interaction and routinely modelled as a sum.
-  This study separates the two claims over a mountain pine beetle outbreak and the mixed-severity
-  wildfire that followed it in the southern Selkirk Mountains of British Columbia. The first result
-  concerns the data, not the forest. The annual classifications from which every beetle
-  surface in the parent study descends were clipped to the fire perimeter before any classification
-  was run, and an independent provincial survey that was never clipped records attack outside the
-  perimeter at a rate no lower than inside it, so any burned against unburned contrast measures the
-  clip. What survives is the gradient within the perimeter, where three records sharing no common
-  measurement pathway agree that attack peaks at moderate severity, and that peak persists after
-  conditioning on host cover and elevation. The second result is the general one. Refitting the
-  parent study's point process model with the beetle by fire product term returns an emphatic
-  interaction under the Poisson likelihood that model is fitted with, and none under inference
-  accounting for the clustering the same study documents in its own figures. The
-  coefficients are identical and only the intervals differ.
+  This study separates them over a mountain pine beetle outbreak and the mixed-severity wildfire
+  that followed it, in the southern Selkirk Mountains of British Columbia. Every beetle surface in
+  the parent study descends from annual classifications clipped to the fire perimeter at source, and
+  an unclipped provincial survey records attack outside the perimeter at a rate no lower than inside
+  it, so any burned against unburned contrast measures the clip. Inside it, three records sharing no
+  measurement pathway agree that attack peaks at moderate severity. The peak holds after
+  conditioning on host cover and elevation, at 0.416 in log-odds against low severity; the fall at
+  high severity does not. Refitting the parent study's point process model with beetle by fire
+  product terms returns an emphatic interaction under the Poisson likelihood it is fitted with, and
+  none under inference respecting the clustering that study documents. The coefficients are
+  identical, the intervals 2.4 to 7.6 times wider, and not one of sixteen excludes zero. These data
+  cannot demonstrate a beetle by fire interaction; the confidence with which they appear to is the
+  transferable result.
 keywords:
   - compound disturbance
   - mountain pine beetle
@@ -184,7 +184,7 @@ stopifnot(length(ANN) == length(ANN_YEARS), length(ANN_ALL) >= length(ANN))
 
 Mountain pine beetle outbreak and wildfire increasingly overlap in the conifer forests of western North America, and the overlap is usually described in the language of interaction. Whether the description is earned is a separate question from whether it is common. @talucci2019dead and @meigs2011 both frame the beetle to fire sequence as a modification of fuels and therefore of subsequent severity, and @krawchuk2020 place compound disturbance at the centre of the refugia concept. The claim that the agents interact is, in each case, a claim about a product rather than a sum.
 
-The mechanism that would justify the claim is real and measurable. Beetle-killed foliage loses moisture and shifts in chemistry within a year of attack, and the flammability of that foliage rises accordingly [@page2012]. What has proved hard is carrying the mechanism up to the stand and the landscape. @simard2011 modelled crown fire behaviour through a beetle outbreak in lodgepole pine and found the probability of active crown fire no higher, and in the red stage lower, than in unattacked stands. @harvey2014 found the effect on burn severity contingent on outbreak stage rather than uniform, and small beside the effect of weather. @hart2015 found no relationship at all between outbreak extent and area subsequently burned across the western United States. The literature is therefore contested rather than empty, and what novelty there is in asking again rests on the particular landscape and on the treatment of confounding rather than on the question being new.
+The mechanism that would justify the claim is real and measurable. Beetle-killed foliage loses moisture and shifts in chemistry within a year of attack, and the flammability of that foliage rises accordingly [@jenkins2012]. What has proved hard is carrying the mechanism up to the stand and the landscape. @simard2011 modelled crown fire behaviour through a beetle outbreak in lodgepole pine and found the probability of active crown fire no higher, and in the red stage lower, than in unattacked stands. @harvey2014 found the effect on burn severity contingent on outbreak stage rather than uniform, and small beside the effect of weather. @hart2015 found no relationship at all between outbreak extent and area subsequently burned across the western United States. The literature is therefore contested rather than empty, and what novelty there is in asking again rests on the particular landscape and on the treatment of confounding rather than on the question being new.
 
 That contest is partly a contest about inference. Prior disturbance is not assigned at random, both agents track host abundance and terrain, and burn severity is measured on a raster whose cells are anything but independent. The literature on prior disturbance conditioning subsequent severity has taken this seriously: @stevensrumann2016, asking this study's first question with fire in place of beetle across four large fires, fitted a spatially explicit autoregression precisely because burn severity is autocorrelated. The difficulty is that diagnosing dependence is easier than propagating it, and @magnussen2017 show in a different corner of forest science that omitting residual spatial autocorrelation leaves confidence intervals too narrow rather than merely imprecise. An interaction term is exactly the quantity that failure would flatter.
 
@@ -1464,6 +1464,16 @@ PP_OK_TXT <- paste(sprintf("%d at %d m", PP_OK_K$K, PP_OK_K$`Block side (m)`),
 WIDEN <- PPB_RAW |>
   mutate(naive = 2 * 1.96 * SE_PROD[Term], ratio = (Upper - Lower) / naive) |>
   summarise(lo = min(ratio), hi = max(ratio))
+
+## The abstract lives in the YAML, where an inline `r` expression does not run, so
+## its five quantities are the only hard-coded numbers in the document. They are
+## asserted here instead: a refit that moves any of them fails the render rather
+## than leaving the abstract quietly contradicting the results.
+stopifnot(sprintf("%.3f", MOD_ADJ) == "0.416",
+          sprintf("%.1f", WIDEN$lo) == "2.4",
+          sprintf("%.1f", WIDEN$hi) == "7.6",
+          nrow(PROD_ROWS) == 16,
+          PROD_CLEAR == 0)
 ```
 
 **Not one of the `r nrow(PROD_ROWS)` product-term intervals excludes zero.** Across four block sizes and `r LR_DF` product terms the count that clears is `r PROD_CLEAR`. The estimates have not moved, because the estimates are not what was wrong; the intervals have widened by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)` against the naive Poisson intervals of @tbl-ppproduct, and that factor is the whole of the difference between an interaction that looks overwhelming and one that is not there.
@@ -1488,7 +1498,7 @@ Two questions were asked. Neither returned the answer it was posed to find, and 
 
 The parent study's abstract describes the additive effects of increasing beetle to fire disturbance interactions. Its model has no product term. This paper set out to close that gap by adding one, and found that the data cannot support a product term either way. That is a more useful outcome than either of the two the study was designed to produce, because it locates the problem in the inference rather than in the ecology.
 
-The mechanism is worth stating plainly, because it is not specific to this landscape. A point process trend fitted by the Berman-Turner device is a weighted Poisson regression [@berman1992; @baddeley2000], and a Poisson likelihood treats every seedling as an independent piece of evidence about the covariates. The parent study devotes two figures and fourteen envelope simulations to establishing that the seedling pattern is not independent: it is clustered at every distance examined, which is the expected result for conifer regeneration and not a defect [@murphy2026]. Those two facts sit in the same paper, and the second invalidates the standard errors the first is reported alongside. The residual correlogram of @fig-correlogram reaches the same verdict from inside the model, with dependence of `r PCORR$"Residual correlation"[1]` within 25 m.
+The mechanism is worth stating plainly, because it is not specific to this landscape. A point process trend fitted by the Berman-Turner device is a weighted Poisson regression [@berman1992; @baddeley2000], and a Poisson likelihood treats every seedling as an independent piece of evidence about the covariates. The parent study devotes two figures and 999 Monte Carlo simulations to establishing that the seedling pattern is not independent: it reports significant clustering in every species examined, which is the expected result for conifer regeneration and not a defect [@murphy2026]. Those two facts sit in the same paper, and the second invalidates the standard errors the first is reported alongside. The residual correlogram of @fig-correlogram reaches the same verdict from inside the model, with dependence of `r PCORR$"Residual correlation"[1]` within 25 m.
 
 This is not an unusual error and it is not a careless one: clustered point patterns are routinely fitted this way and the software makes the Poisson path the path of least resistance. What makes it consequential is the size of the correction. A misspecified likelihood does not usually move a coefficient, it moves the interval around it, and the interval is what the claim rests on.
 
