@@ -167,8 +167,10 @@ No raster is stored in this repository. All are read at render time.
     residual correlogram puts dependence at 0.394 within 100 m, decaying to 0.057 by 500 m, so a
     500 m block holds most of it. The burn affords 27 blocks at 500 m, 14 at 750 m and only 8 at the
     1 km the sibling study uses, so the sweep across block sizes is reported rather than a single
-    interval. The task request's figure of 0.728 for Moran's I on the red-attack union was not
-    reproduced here and should not be quoted until it is.
+    interval. Moran's I is now computed in the manuscript rather than asserted: it is 0.66 at queen
+    adjacency on the grey-stage response over the analysis frame. The task request's figure of 0.728
+    was for the red-attack union and is still not reproduced; quote 0.66 and say what it is measured
+    on.
 12. **`model.matrix` silently drops rows with an `NA` factor level.** A few cells inside the
     perimeter carry the outside-perimeter severity code and fall outside the four severity levels.
     Left in, the design matrix is shorter than the response and every bootstrap index is off by that
@@ -205,6 +207,22 @@ No raster is stored in this repository. All are read at render time.
     silent and returns an all-`NA` interval. Keep the weight as a column of the frame and pass it by
     name. `tbl-ppblocks` reports a usable-draw count so an all-`NA` result cannot pass as a wide
     interval. This cost a debugging cycle on 5 August 2026.
+18. **`error: true` plus `output: false` makes an assertion completely silent.** Four places in the
+    manuscript claimed a `stopifnot` "fails the render". Under `error: true` it does not: the render
+    exits 0. Worse, where the chunk also sets `output: false`, as `pp-verdict` does, the error block
+    is suppressed from the document too, so a failed assertion produces no signal anywhere. This is
+    not hypothetical. The abstract's widening factor was asserted to be 2.4 to 7.6; raising the
+    bootstrap to 2,000 replicates and excluding unidentified resamples moved it to 2.3 to 5.9, the
+    assertion failed, and the render reported success with the abstract contradicting the results.
+    Keep `error: false`. It is the only thing that makes any of these guards real.
+19. **A percentile bootstrap silently changes its estimand when a term is unidentified.** A resample
+    that omits the blocks holding a sparse product cell leaves that term unestimable; `glm.fit`
+    converges and returns `NA` for it rather than failing, and `quantile(na.rm = TRUE)` then takes
+    the percentile over whichever draws happened to contain the cell, which are the draws that
+    overweight it. The interval inflates for a reason unrelated to spatial dependence. Six of the
+    thirty-two term-by-block combinations were affected here, and left in they put the top of the
+    widening range at 7.7 rather than 5.9. Report the usable-draw count per cell and compute headline
+    ratios on fully identified combinations only.
 
 ## Open items
 

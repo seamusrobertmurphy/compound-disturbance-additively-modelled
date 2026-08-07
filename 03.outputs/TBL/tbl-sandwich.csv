@@ -1,0 +1,17 @@
+"Block side (m)","Term","Poisson SE","Cluster-robust SE","Ratio"
+75,"Grey attack",0.062,0.257,4.1
+75,"Red attack",0.069,0.281,4
+75,"High severity",0.075,0.202,2.7
+75,"Low severity",0.043,0.135,3.1
+75,"Grey attack by high severity",0.165,0.297,1.8
+75,"Grey attack by low severity",0.135,0.743,5.5
+75,"Red attack by high severity",0.176,0.43,2.4
+75,"Red attack by low severity",0.139,0.645,4.7
+100,"Grey attack",0.062,0.289,4.6
+100,"Red attack",0.069,0.258,3.7
+100,"High severity",0.075,0.284,3.8
+100,"Low severity",0.043,0.175,4.1
+100,"Grey attack by high severity",0.165,0.33,2
+100,"Grey attack by low severity",0.135,0.663,4.9
+100,"Red attack by high severity",0.176,0.427,2.4
+100,"Red attack by low severity",0.139,0.622,4.5

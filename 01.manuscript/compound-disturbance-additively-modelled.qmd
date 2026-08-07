@@ -17,9 +17,9 @@ abstract: >
   high severity does not. Refitting the parent study's point process model with beetle by fire
   product terms returns an emphatic interaction under the Poisson likelihood it is fitted with, and
   none under inference respecting the clustering that study documents. The coefficients are
-  identical, the intervals 2.4 to 7.6 times wider, and not one of sixteen excludes zero. These data
-  cannot demonstrate a beetle by fire interaction; the confidence with which they appear to is the
-  transferable result.
+  identical, the intervals 2.3 to 5.9 times wider, and not one of sixteen excludes zero; a
+  cluster-robust sandwich agrees. These data cannot demonstrate a beetle by fire interaction; the
+  confidence with which they appear to is the transferable result.
 keywords:
   - compound disturbance
   - mountain pine beetle
@@ -32,7 +32,7 @@ date: today
 format:
   docx:
     prefer-html: true
-    reference-doc: ../04.references/style-formal.docx
+    reference-doc: ../04.references/style-elsevier-submission.docx
     highlight-style: pygments
   html:
     page-layout: full
@@ -57,7 +57,7 @@ execute:
   echo: true
   warning: false
   message: false
-  error: true
+  error: false
   comment: NA
 
 always_allow_html: true
@@ -65,7 +65,7 @@ engine: knitr
 citeproc: true
 editor: visual
 bibliography: ../04.references/references-compound.bib
-csl: ../04.references/cjfr.csl
+csl: ../04.references/elsevier-harvard.csl
 df-print: kable
 ---
 
@@ -91,7 +91,11 @@ theme_set(theme_minimal(base_size = 10) +
                 plot.title = element_text(face = "bold", size = 10)))
 
 OUTBREAK <- 2005:2014   # red-attack window preceding the 2015 fire, which burned in 2015
-B_BOOT   <- 400L        # spatial block bootstrap replicates
+## 2,000 replicates rather than the 400 of earlier drafts. Three conclusions sat
+## within about one Monte Carlo standard error of reversing at 400, where the
+## error on a percentile endpoint runs to roughly 0.02 in log-odds, which is the
+## same size as the margins being read. At 2,000 it is halved.
+B_BOOT   <- 2000L       # spatial block bootstrap replicates
 BLOCK_M  <- 500L        # primary block side in metres
 BLOCK_SWEEP <- c(300L, 400L, 500L, 750L)
 
@@ -101,6 +105,11 @@ BLOCK_SWEEP <- c(300L, 400L, 500L, 750L)
 ## correlogram in tbl-ppcorr is what sets them.
 PP_DX    <- 10L         # quadrature spacing of the published fit, in metres
 PP_SWEEP <- c(25L, 50L, 75L, 100L)
+## The subset of those sizes the residual range actually licenses. A 25 m block
+## does not contain the dependence, so quoting the 25 m run's block count would
+## credit the study with resolution it does not have. Declared here because both
+## the sandwich of tbl-sandwich and the verdict chunk need it.
+PP_OK    <- PP_SWEEP[PP_SWEEP >= 75]
 
 ## The class vocabulary, written once. These strings key match(), %in% and
 ## factor(levels=) calls that return NA on a typo rather than erroring, so eight
@@ -188,7 +197,9 @@ The mechanism that would justify the claim is real and measurable. Beetle-killed
 
 That contest is partly a contest about inference. Prior disturbance is not assigned at random, both agents track host abundance and terrain, and burn severity is measured on a raster whose cells are anything but independent. The literature on prior disturbance conditioning subsequent severity has taken this seriously: @stevensrumann2016, asking this study's first question with fire in place of beetle across four large fires, fitted a spatially explicit autoregression precisely because burn severity is autocorrelated. The difficulty is that diagnosing dependence is easier than propagating it, and @magnussen2017 show in a different corner of forest science that omitting residual spatial autocorrelation leaves confidence intervals too narrow rather than merely imprecise. An interaction term is exactly the quantity that failure would flatter.
 
-The parent study for this analysis [@murphy2026] modelled conifer regeneration across three four-hectare plots inside the 2015 Mt Midgeley burn, using classified Landsat surfaces for burn severity and for red-stage beetle mortality. Its abstract describes the additive effects of increasing beetle to fire disturbance interactions. Its model, however, enters red attack, grey attack and burn severity as additive main effects with no product term among them. The two statements are not the same statement, and the ambiguity was noticed at the time without being resolved.
+The parent study for this analysis [@murphy2026] modelled conifer regeneration across three four-hectare plots inside the 2015 Mt Midgeley burn, using classified Landsat surfaces for burn severity and for red-stage beetle mortality. Its abstract reports that "areas of overlapping beetle mortality and high burn severity had significantly reduced lodgepole pine regeneration", and its conclusions that the results suggest "the ecological consequences of beetle-fire interactions weaken as surface fuels decay over time". Both are statements about a joint condition: what happens where the two agents coincide, and how that changes with time since attack.
+
+Read against the model, both are inferences from main effects. The fitted trend carries eight covariates, seed source distance, aspect, terrain ruggedness, wind, grey-stage and red-stage beetle mortality, and high and low burn severity, and it carries them additively. No product of a beetle indicator with a fire indicator appears in the pooled fit or in any of the seven per-species fits, and no overlap indicator appears either, though the layers for one were built: rasters intersecting red attack with high and with low burn severity sit in the project directory, entered into no model. A joint-condition claim read off main effects is not wrong, but it is a claim the specification does not separately test, and the gap between the two was noticed at the time without being resolved. This paper closes it.
 
 This study asks the two questions that separation implies.
 
@@ -843,7 +854,15 @@ ggsave(GRAD_PATH, FIG_GRAD, width = 6.2, height = 3.4, dpi = 300, bg = "white")
 knitr::include_graphics(GRAD_PATH)
 ```
 
-Three records agree on the shape. The corrected grey union runs `r shape("Grey (%)")` per cent across low, moderate and high severity, the published red-stage surface `r shape("Red (%)")`, and the independent survey `r shape("Survey (%)")`. All three peak at `r tolower(unique(PEAKS))` and fall at high, and the assertion above fails the render if they ever stop agreeing. The two local surfaces share a measurement pathway with each other but not with the survey, so the agreement is not one instrument repeating itself.
+```{r}
+#| label: tbl-withinburn
+#| echo: true
+#| tbl-cap: "The same three records as counts and rates, with the cells and the mean elevation of each class. The figure carries the shape; this table carries the numbers the elevation argument below rests on."
+
+show(WB, "tbl-withinburn", "lrrrrr")
+```
+
+Three records agree on the shape. As @tbl-withinburn sets out, the corrected grey union runs `r shape("Grey (%)")` per cent across low, moderate and high severity, the published red-stage surface `r shape("Red (%)")`, and the independent survey `r shape("Survey (%)")`. All three peak at `r tolower(unique(PEAKS))` and fall at high, and the assertion above fails the render if they ever stop agreeing. The two local surfaces share a measurement pathway with each other but not with the survey, so the agreement is not one instrument repeating itself.
 
 That agreement is not yet evidence about fire. The elevation column is the reason. Moderate severity occupies the highest mean elevation of the three burned classes at `r WB$"Elevation (m)"[WB$Class == "Moderate"]` m, and the companion refugia analysis of this landscape finds beetle attack peaking near 1,430 m for reasons that have nothing to do with fire [@murphy2026refugia]. A severity gradient that is also an elevation gradient will reproduce the beetle elevation optimum whether or not severity matters. Conditioning on host abundance and on elevation is therefore the first task of the next phase, not a robustness check appended to it.
 
@@ -917,7 +936,21 @@ strat <- function(g) FR |> group_by(Stratum = g) |>
 HOST <- bind_rows(strat(paste0(as.character(FR$sev), " severity")),
                   strat(ifelse(FR$host == 1, "Lodgepole present", "Lodgepole absent")))
 
-R_PL_EL <- cor(FR$pl, FR$elev)
+## Two correlations, and only the second is the model's. The continuous lodgepole
+## percentage is what the inventory records; the binary host indicator is what
+## F_ADJ actually fits. Reporting the first as though it were the regressor's
+## collinearity was an error in an earlier draft of this section.
+R_PL_EL   <- cor(FR$pl, FR$elev)
+R_HOST_EL <- cor(FR$host, FR$elev)
+## With two continuous predictors the variance inflation factor is 1/(1 - r^2).
+VIF_HOST  <- 1 / (1 - R_HOST_EL^2)
+
+## The effective sample size, which is what actually binds here. Computed from
+## the same 500 m grid the bootstrap of sec-blocks resamples, but written out
+## here because that section is downstream of this one and blocks_of() with it.
+K_500 <- length(unique(paste(FR$row %/% round(BLOCK_M / RES_M),
+                             FR$col %/% round(BLOCK_M / RES_M))))
+
 H_PRES <- HOST$`Attacked (%)`[HOST$Stratum == "Lodgepole present"]
 H_ABS  <- HOST$`Attacked (%)`[HOST$Stratum == "Lodgepole absent"]
 
@@ -931,7 +964,9 @@ show(HOST, "tbl-host", "lrrrr") |>
   pack_rows("By burn severity", 1, 4) |> pack_rows("By host presence", 5, 6)
 ```
 
-The crude host contrast is large: `r H_PRES` per cent of cells carrying lodgepole were attacked against `r H_ABS` per cent of cells without it, the same direction and roughly the same magnitude the companion study finds at landscape extent. But lodgepole cover and elevation correlate at `r sprintf("%.2f", R_PL_EL)` across this frame, and that is the difficulty. At landscape extent the two can be separated because the elevation gradient runs far enough for pine-poor ground to occur at every height. Inside an eight square kilometre burn it does not.
+The crude host contrast is large: `r H_PRES` per cent of cells carrying lodgepole were attacked against `r H_ABS` per cent of cells without it, the same direction and roughly the same magnitude the companion study finds at landscape extent. Host and elevation do move together here. Lodgepole percentage correlates with elevation at `r sprintf("%.2f", R_PL_EL)` across the frame, and the binary host indicator the model actually fits correlates with it at `r sprintf("%.2f", R_HOST_EL)`.
+
+That is worth stating carefully, because collinearity of this size is not on its own a reason a coefficient cannot be estimated. A correlation of `r sprintf("%.2f", R_HOST_EL)` between two predictors implies a variance inflation factor of about `r sprintf("%.2f", VIF_HOST)`, which over `r format(N_FR, big.mark = ",")` cells is unremarkable and would disqualify nothing. The binding constraint is not the correlation but the information: dependence at this scale means the frame carries nothing like `r format(N_FR, big.mark = ",")` independent observations, and the block bootstrap of @sec-blocks puts the effective number at the `r K_500` blocks a `r BLOCK_M` m grid affords. Two predictors that move together, asked to separate on that much information, will not. At landscape extent the companion study separates them because the elevation gradient runs far enough for pine-poor ground to occur at every height, and because the extent affords hundreds of blocks rather than tens.
 
 ## Conditioned coefficients {#sec-conditioned}
 
@@ -992,7 +1027,7 @@ Three things follow, and only the first is a positive result.
 
 **High severity is never distinguishable from low.** Its interval spans zero in every specification. The non-monotone shape that all three records trace is therefore a claim the data supports at its peak and not at its fall: attack is elevated at moderate severity, and whether it declines at high severity cannot be settled from `r format(HOST$Cells[HOST$Stratum == "High severity"], big.mark = ",")` cells. **Do not report a demonstrated decline at high severity.**
 
-**Host cover cannot be separated from elevation here, and elevation wins.** Entered alongside elevation, host presence carries an interval that spans zero comfortably, despite the crude contrast of `r H_PRES` against `r H_ABS` per cent. Elevation is the only covariate whose interval excludes zero in every specification. This does not contradict the companion study's finding that host governs the landscape pattern; it means that at this extent the question cannot be asked, because the two predictors are `r sprintf("%.2f", R_PL_EL)` correlated and the burn is too small to break the tie.
+**Host cover cannot be separated from elevation here, and elevation wins.** Entered alongside elevation, host presence carries an interval that spans zero comfortably, despite the crude contrast of `r H_PRES` against `r H_ABS` per cent. Elevation is the only covariate whose interval excludes zero in every specification. This does not contradict the companion study's finding that host governs the landscape pattern. It means that at this extent the question cannot be asked, for the reason @sec-collinear gives: the two predictors move together, and `r K_500` effective observations are not enough to break the tie between them.
 
 ```{r}
 #| label: tbl-elev
@@ -1027,7 +1062,22 @@ The companion study finds beetle attack peaking near 1,430 m across 1,776 m of r
 
 ## Block bootstrap inference {#sec-blocks}
 
-Moran's I on the response is high and the residuals stay dependent well beyond a single cell, so naive standard errors would be meaningless. The block bootstrap fixes that, but the block size is not free: blocks must be large enough to contain the dependence and numerous enough to resample. Over a burn this size the two requirements collide.
+```{r}
+#| label: moran
+#| echo: true
+#| output: false
+
+## Moran's I on the response, over the analysis frame. An earlier draft asserted
+## this was high without computing it; it is computed here so the sentence below
+## carries a number. Queen adjacency on the native grid, which is the shortest
+## lag available and therefore the strongest test of cell-to-cell dependence.
+MI_R <- rast(matrix(NA_real_, nrow(red), ncol(red)),
+             extent = ext(red), crs = crs(red))
+MI_R[cbind(FR$row, FR$col)] <- FR$y
+MORAN <- terra::autocor(MI_R, method = "moran", global = TRUE)
+```
+
+Moran's I on the response is `r sprintf("%.2f", MORAN)` at queen adjacency, and the residual correlogram below shows dependence persisting well beyond a single cell, so naive standard errors would be meaningless. The block bootstrap fixes that, but the block size is not free: blocks must be large enough to contain the dependence and numerous enough to resample. Over a burn this size the two requirements collide.
 
 ```{r}
 #| label: fig-blocks
@@ -1082,7 +1132,23 @@ ggsave(BLK_PATH, FIG_BLK, width = 5.6, height = 3.2, dpi = 300, bg = "white")
 knitr::include_graphics(BLK_PATH)
 ```
 
-Residual dependence falls from `r CORR$"Residual correlation"[1]` within 100 m to `r CORR$"Residual correlation"[4]` by 500 m, so a 500 m block contains most of it. @fig-correlogram plots this alongside the same measurement inside the regeneration plots, because the two scales meet the same obstacle and it is easier to see them together. The burn spans about 4.0 by 2.0 km, which affords `r SWEEP$Blocks[SWEEP$"Block side (m)" == BLOCK_M]` blocks at that size and only `r SWEEP$Blocks[which.max(SWEEP$"Block side (m)")]` at `r max(SWEEP$"Block side (m)")` m. The companion study uses roughly 1 km blocks over a landscape that affords hundreds; here 1 km would afford eight, which is not a bootstrap.
+```{r}
+#| label: tbl-blocks
+#| echo: true
+#| tbl-cap: "The block sweep as numbers: the moderate-against-low coefficient, the interval it carries at each block size, and the blocks each size affords. The figure shows that only the interval moves; this table gives the bounds it moves between."
+
+show(SWEEP, "tbl-blocks", "rrrll")
+```
+
+```{r}
+#| label: tbl-correlogram
+#| echo: true
+#| tbl-cap: "Residual correlogram of the conditioned model across the burn, by distance lag. This is the left panel of @fig-correlogram at the precision the block-size argument uses."
+
+show(CORR, "tbl-correlogram", "lr")
+```
+
+Residual dependence falls from `r CORR$"Residual correlation"[1]` within 100 m to `r CORR$"Residual correlation"[4]` by 500 m (@tbl-correlogram), so a 500 m block contains most of it. @tbl-blocks gives the sweep as numbers. @fig-correlogram plots this alongside the same measurement inside the regeneration plots, because the two scales meet the same obstacle and it is easier to see them together. The burn spans about 4.0 by 2.0 km, which affords `r SWEEP$Blocks[SWEEP$"Block side (m)" == BLOCK_M]` blocks at that size and only `r SWEEP$Blocks[which.max(SWEEP$"Block side (m)")]` at `r max(SWEEP$"Block side (m)")` m. The companion study uses roughly 1 km blocks over a landscape that affords hundreds; here 1 km would afford eight, which is not a bootstrap.
 
 ```{r}
 #| label: sweep-summary
@@ -1207,10 +1273,16 @@ Nothing below is worth reading unless the additive fit reproduces. It does, to t
 ```{r}
 #| label: tbl-ppreproduce
 #| echo: true
-#| tbl-cap: "The published additive trend, as reported by the parent study's final refit and as recomputed here from the same rasters. The comparison is the licence for everything that follows: a product term added to a model that did not reproduce would test nothing."
+#| tbl-cap: "The published additive trend, as reported by the parent study's final refit and as recomputed here from the same rasters, with the standard errors each carries. The comparison is the licence for everything that follows: a product term added to a model that did not reproduce would test nothing. The standard-error columns show that the published uncertainty is the naive Poisson uncertainty, which is the premise of @sec-pphonest."
 
 ## glm.fit on a prebuilt model matrix, as in sec-conditioned: identical
 ## arithmetic to formula glm and fast enough to bootstrap.
+## A resample that omits the blocks carrying one of the four product cells leaves
+## that term unidentified: glm.fit converges and returns NA for that column
+## rather than failing. The NA is left in place deliberately, so that each term's
+## percentile is taken over the draws that identified it and pp_boot can count
+## how many those were. Collapsing the whole draw to NA instead would hide which
+## term was degenerate, and treating the NA as an estimate would be worse.
 pfit <- function(X, idx) {
   f <- suppressWarnings(glm.fit(X[idx, , drop = FALSE], PP$yy[idx],
                                 weights = PP$w[idx], family = poisson()))
@@ -1222,17 +1294,39 @@ stopifnot(nrow(X_ADD) == nrow(PP), nrow(X_PROD) == nrow(PP))
 B_ADD  <- pfit(X_ADD, seq_len(nrow(PP)))
 B_PROD <- pfit(X_PROD, seq_len(nrow(PP)))
 
+## The naive Poisson standard error, from the weighted information matrix of the
+## same fit. Defined here rather than in sec-ppproduct because the reproduction
+## below needs it: if the published standard errors match this, the claim that
+## they are Poisson standard errors stops being an inference about the parent
+## study's software and becomes something the table shows.
+pois_ci <- function(X, b) {
+  eta <- drop(X %*% b); mu <- exp(eta)
+  V <- solve(crossprod(X, X * (mu * PP$w)))
+  sqrt(diag(V))
+}
+SE_ADD <- pois_ci(X_ADD, B_ADD)
+
 PUB <- read.csv(file.path(GREY_FIX, "tables", "Table12_LGCP_coefficients_CORRECTED.csv"))
+ix <- match(names(B_ADD), PUB$term)
 REPRO <- tibble(Term = names(B_ADD),
-                Published = round(PUB$Estimate[match(names(B_ADD), PUB$term)], 4),
-                Recomputed = round(unname(B_ADD), 4)) |>
-  mutate(Difference = round(Recomputed - Published, 4))
-## The reproduction is load-bearing. Fail the render if it ever stops holding.
-stopifnot(max(abs(REPRO$Difference)) < 1e-3)
-show(REPRO, "tbl-ppreproduce", "lrrr")
+                Published = round(PUB$Estimate[ix], 4),
+                Recomputed = round(unname(B_ADD), 4),
+                `Published SE` = round(PUB$Std.Error[ix], 4),
+                `Poisson SE` = round(unname(SE_ADD), 4)) |>
+  mutate(Difference = round(Recomputed - Published, 4),
+         `SE difference` = round(`Poisson SE` - `Published SE`, 4))
+## Both halves of the reproduction are load-bearing. The coefficients licence the
+## refit; the standard errors licence the claim of sec-pphonest that the
+## published uncertainty is Poisson uncertainty. Fail the render on either.
+stopifnot(max(abs(REPRO$Difference)) < 1e-3,
+          max(abs(REPRO$`SE difference`)) < 1e-3)
+SE_MAXDIFF <- max(abs(REPRO$`SE difference`))
+show(REPRO, "tbl-ppreproduce", "lrrrrrr")
 ```
 
-All `r nrow(REPRO)` coefficients agree, and the assertion above fails the render if they ever stop agreeing. Two features of the published fit matter for what follows, and both are visible in this table. The grey-stage coefficient is `r sprintf("%.4f", REPRO$Published[REPRO$Term == "MPB_G"])`, which is zero to three decimal places: the parent study's own corrected refit already found no grey-stage main effect. And the two fire terms are indicators for high and low severity, which means they are contrasts against whatever the reference category contains.
+All `r nrow(REPRO)` coefficients agree, and the assertion above fails the render if they ever stop agreeing. So do the standard errors, to within `r sprintf("%.0e", SE_MAXDIFF)`, and that second agreement is worth pausing on because the rest of this section rests on it. The right-hand columns set the published standard errors beside the standard errors implied by an ordinary weighted Poisson fit to the same design matrix. They are the same numbers. The published uncertainty is therefore Poisson uncertainty, not an inference drawn here about what the parent study's software must have done but a quantity this table reproduces from scratch.
+
+Two further features of the fit matter for what follows. The grey-stage coefficient is `r sprintf("%.4f", REPRO$Published[REPRO$Term == "MPB_G"])`, which is zero to three decimal places: the parent study's own corrected refit already found no grey-stage main effect. And the two fire terms are indicators for high and low severity, which means they are contrasts against whatever the reference category contains.
 
 ## Covariate support {#sec-ppsupport}
 
@@ -1273,14 +1367,10 @@ Three things follow.
 ```{r}
 #| label: tbl-ppproduct
 #| echo: true
-#| tbl-cap: "The additive trend as published, and the same trend with the four beetle by fire product terms added. Intervals are the naive Poisson intervals the published likelihood implies. On these the interaction is emphatic and three of the four product terms exclude zero."
+#| tbl-cap: "The additive trend as published, and the same trend with the four beetle by fire product terms added. Intervals are the naive Poisson intervals the published likelihood implies, and terms excluding zero on those intervals are marked. Read this way the interaction is emphatic; @sec-pphonest reads it the other way."
 
-pois_ci <- function(X, b) {
-  eta <- drop(X %*% b); mu <- exp(eta)
-  V <- solve(crossprod(X, X * (mu * PP$w)))
-  sqrt(diag(V))
-}
-SE_ADD  <- pois_ci(X_ADD,  B_ADD)
+## pois_ci and SE_ADD are defined in sec-ppreproduce, where the reproduction of
+## the published standard errors needs them.
 SE_PROD <- pois_ci(X_PROD, B_PROD)
 
 side <- function(b, se, lbl) tibble(
@@ -1311,7 +1401,9 @@ Two details ought to give pause before that is written down. The product terms d
 
 ## Spatially adjusted inference {#sec-pphonest}
 
-The published fit's standard errors are Poisson standard errors, which assume that seedlings are placed independently given the covariates. That assumption is not a background technicality here: the parent study devotes two figures to rejecting it, reporting inhomogeneous K and L functions with 999-simulation envelopes that show the seedling pattern clustered at every distance examined [@murphy2026]. A model cannot use a clustered-process figure as a result and an independent-process likelihood as its inference. The residuals say the same thing.
+The published fit is described as an inhomogeneous log-Gaussian Cox process, and estimating the trend of a Cox process by the Berman-Turner device is legitimate: the Poisson score is a composite likelihood, and it returns consistent estimates of the trend whether or not the process is Poisson [@baddeley2000; @waagepetersen2007]. What the composite likelihood does not return is the variance. The standard errors it reports are the standard errors of the Poisson model it is arithmetically equivalent to, and those assume seedlings are placed independently given the covariates. So the estimates carry the Cox specification and the uncertainty carries the Poisson one, and only the second is affected.
+
+That the process is not Poisson is established in the parent study itself. It devotes two figures to Ripley's inhomogeneous K, testing the observed pattern against a null of non-constant intensity through 999 Monte Carlo simulations, and reports significant clustering for every species examined [@murphy2026]. Conifer regeneration is clustered, for seed-dispersal and microsite reasons that have nothing to do with the covariates, and finding it so is the expected result rather than a defect. The point is only that the same paper cannot use a clustered-process diagnostic as a result and an independent-process variance as its inference. The residuals of the refit say the same thing directly.
 
 ```{r}
 #| label: fig-correlogram
@@ -1363,7 +1455,15 @@ ggsave(CORR_PATH, FIG_CORR, width = 7.2, height = 3.2, dpi = 300, bg = "white")
 knitr::include_graphics(CORR_PATH)
 ```
 
-Dependence runs at `r PCORR$"Residual correlation"[1]` inside 25 m and is still `r PCORR$"Residual correlation"[3]` between 50 and 75 m, crossing zero at around 100 m. A block that contains it must therefore be at least 75 to 100 m on a side, and a 200 m plot affords few of those. That collision is the same one @sec-blocks met at landscape scale, arriving again two orders of magnitude down.
+```{r}
+#| label: tbl-ppcorr
+#| echo: true
+#| tbl-cap: "Residual correlogram of the fit with product terms, over the quadrature points inside the plots. This is the right panel of @fig-correlogram at the precision that sets the block sizes tried below."
+
+show(PCORR, "tbl-ppcorr", "lr")
+```
+
+Dependence runs at `r PCORR$"Residual correlation"[1]` inside 25 m and is still `r PCORR$"Residual correlation"[3]` between 50 and 75 m, crossing zero at around 100 m (@tbl-ppcorr). A block that contains it must therefore be at least 75 to 100 m on a side, and a 200 m plot affords few of those. That collision is the same one @sec-blocks met at landscape scale, arriving again two orders of magnitude down.
 
 ```{r}
 #| label: fig-interaction
@@ -1388,10 +1488,25 @@ PP_SHOWN <- c("MPB_G", "MPB_R", "Fire_H", "Fire_L", PRODT)
 PPB_RAW <- bind_rows(lapply(PP_SWEEP, function(m)
   pp_boot(X_PROD, m) |> filter(Term %in% PP_SHOWN) |> mutate(`Block side (m)` = m)))
 
+## The ground each product term is estimated from: quadrature points where both
+## of its indicators are on. This is what a resample has to miss for the term to
+## become unidentified, so it is the number that explains the Usable counts.
+PROD_CELLS <- vapply(PRODT, function(t) {
+  v <- strsplit(t, ":", fixed = TRUE)[[1]]
+  sum(Q[[v[1]]] == 1 & Q[[v[2]]] == 1)
+}, integer(1))
+
+## Identification, carried forward rather than averaged away. A term is fully
+## identified at a block size only if every one of the B_BOOT draws estimated it;
+## anything less means some resample omitted the blocks carrying its cells, and
+## the percentile for that term is then taken over a selected subset of draws.
+PPB_RAW <- PPB_RAW |> mutate(Identified = Usable == B_BOOT)
+
 PPB <- PPB_RAW |>
   transmute(`Block side (m)`, Blocks = K, Term,
             Estimate = round(B_PROD[Term], 3),
             Interval = ci_txt(Lower, Upper),
+            `Draws` = paste0(Usable, "/", B_BOOT),
             ` ` = ifelse(clears(Lower, Upper), "clears zero", "spans zero"))
 invisible(keep(PPB, "fig-interaction"))
 
@@ -1439,6 +1554,62 @@ knitr::include_graphics(INT_PATH)
 ```
 
 ```{r}
+#| label: tbl-ppblocks
+#| echo: true
+#| tbl-cap: "The same intervals as numbers, with the count of bootstrap draws that identified each term. A term short of the full count was unestimable in some resample, because the blocks carrying its cells were not drawn; its interval is then a percentile over the draws that did identify it and is read accordingly."
+
+show(PPB, "tbl-ppblocks", "rrlrlrl") |> collapse_rows(1:2, valign = "top")
+```
+
+```{r}
+#| label: tbl-sandwich
+#| echo: true
+#| tbl-cap: "A second variance estimate, independent of the bootstrap. Standard errors for the fit with product terms under the naive Poisson likelihood and under a cluster-robust sandwich clustered on the same spatial blocks, with the ratio between them. The bootstrap resamples blocks; the sandwich sums scores within them. The two answer the same question by different routes."
+
+## A block bootstrap over 14 to 36 blocks sits below the percentile method's
+## comfortable floor, so the inference should not rest on it alone. The sandwich
+## is the check a referee will already trust: the bread is the same Poisson
+## information pois_ci inverts, and the meat is the outer product of scores
+## summed within block, so dependence inside a block is carried and dependence
+## between blocks is assumed away. Same assumption as the bootstrap, different
+## estimator.
+cluster_se <- function(X, b, side_m) {
+  mu <- exp(drop(X %*% b))
+  V  <- solve(crossprod(X, X * (mu * PP$w)))          # bread: Poisson information
+  U  <- (PP$w * (PP$yy - mu)) * X                     # score contribution per point
+  S  <- rowsum(U, paste(PP$x %/% side_m, PP$y %/% side_m))
+  G  <- nrow(S)
+  ## The usual finite-cluster correction. With G this small it is not cosmetic.
+  meat <- crossprod(S) * (G / (G - 1))
+  sqrt(diag(V %*% meat %*% V))
+}
+
+SAND <- bind_rows(lapply(PP_OK, function(m) {
+  se <- cluster_se(X_PROD, B_PROD, m)
+  tibble(`Block side (m)` = m, Term = PP_SHOWN,
+         `Poisson SE` = round(unname(SE_PROD[PP_SHOWN]), 3),
+         `Cluster-robust SE` = round(unname(se[PP_SHOWN]), 3),
+         Ratio = round(unname(se[PP_SHOWN] / SE_PROD[PP_SHOWN]), 1),
+         lo = B_PROD[PP_SHOWN] - 1.96 * se[PP_SHOWN],
+         hi = B_PROD[PP_SHOWN] + 1.96 * se[PP_SHOWN])
+}))
+
+## The same verdict the bootstrap was asked for, from the other estimator.
+SAND_PROD_CLEAR <- sum(clears(SAND$lo[SAND$Term %in% PRODT],
+                              SAND$hi[SAND$Term %in% PRODT]))
+SAND_N_PROD <- sum(SAND$Term %in% PRODT)
+SAND_RANGE  <- range(SAND$Ratio)
+
+show(SAND |> select(-lo, -hi) |>
+       mutate(Term = pp_label(Term)), "tbl-sandwich", "rlrrr") |>
+  collapse_rows(1, valign = "top")
+```
+
+The sandwich of @tbl-sandwich agrees with the bootstrap of @tbl-ppblocks on both counts. It inflates the standard errors by a factor of `r sprintf("%.1f", SAND_RANGE[1])` to `r sprintf("%.1f", SAND_RANGE[2])`, in the same range as the interval widening the resampling produces, and of the `r SAND_N_PROD` product-term intervals it implies across the block sizes the correlogram licenses, `r SAND_PROD_CLEAR` exclude zero. Two estimators that share an assumption are not independent evidence, and both assume that blocks are independent of one another. But they differ in everything else, and a result that survived one because of an artefact of the other's construction would not survive both.
+
+**The direction of the remaining error is worth stating, because it does not run the same way for the two results.** Any residual dependence these methods fail to capture leaves the intervals still too narrow. For the product terms that is a conservative failure: the intervals reported here are, if anything, narrower than they should be, and they already span zero, so a fuller accounting of dependence can only strengthen the conclusion that the interaction is unsupported. For the moderate-severity peak of @sec-conditioning it runs the other way. That result is positive, it rests on an interval excluding zero, and an interval that is too narrow is exactly what would manufacture it. The negative result here is therefore the more secure of the two, and the positive one is reported at @sec-blocks with its weakest block size named for that reason.
+
+```{r}
 #| label: pp-verdict
 #| echo: true
 #| output: false
@@ -1453,30 +1624,43 @@ MAIN_KEEP  <- PPB_RAW |> filter(!Term %in% PRODT) |>
   filter(all_clear) |> pull(Term)
 MAIN_WORDS <- paste(tolower(pp_label(MAIN_KEEP)), collapse = " and ")
 
-## The block sizes the correlogram actually licenses, which is not all of the
-## sizes tried. Quoting the full sweep's block counts would credit the study with
-## the 25 m run's 234 blocks, and a 25 m block does not contain the dependence.
-PP_OK    <- PP_SWEEP[PP_SWEEP >= 75]
+## PP_OK, the block sizes the correlogram licenses, is declared in setup because
+## tbl-sandwich needs it upstream of here.
 PP_OK_K  <- PPB_RAW |> filter(`Block side (m)` %in% PP_OK) |>
   distinct(`Block side (m)`, K) |> arrange(desc(K))
 PP_OK_TXT <- paste(sprintf("%d at %d m", PP_OK_K$K, PP_OK_K$`Block side (m)`),
                    collapse = " and ")
-WIDEN <- PPB_RAW |>
+## The widening factor is the paper's headline number, so it is computed only
+## where every draw identified the term. A partially identified term has an
+## interval taken over a selected subset of resamples, which inflates it for a
+## reason that has nothing to do with spatial dependence, and quoting that as
+## the cost of honest inference would overstate the case.
+DEGEN <- PPB_RAW |> filter(!Identified)
+WIDEN <- PPB_RAW |> filter(Identified) |>
   mutate(naive = 2 * 1.96 * SE_PROD[Term], ratio = (Upper - Lower) / naive) |>
-  summarise(lo = min(ratio), hi = max(ratio))
+  summarise(lo = min(ratio), hi = max(ratio), n = n())
 
 ## The abstract lives in the YAML, where an inline `r` expression does not run, so
-## its five quantities are the only hard-coded numbers in the document. They are
+## its six quantities are the only hard-coded numbers in the document. They are
 ## asserted here instead: a refit that moves any of them fails the render rather
 ## than leaving the abstract quietly contradicting the results.
+## This guard is only real with `error: false` in the YAML. Under `error: true`
+## a failure here printed nothing at all, because the chunk also sets
+## `output: false`, and the render exited 0 with the abstract contradicting the
+## results. That is how the previous 2.4 and 7.6 survived a refit that moved
+## them. Do not set `error: true`, and do not remove `output: false` in place of
+## fixing it, because the chunk's console noise is not the point of it.
 stopifnot(sprintf("%.3f", MOD_ADJ) == "0.416",
-          sprintf("%.1f", WIDEN$lo) == "2.4",
-          sprintf("%.1f", WIDEN$hi) == "7.6",
+          sprintf("%.1f", WIDEN$lo) == "2.3",
+          sprintf("%.1f", WIDEN$hi) == "5.9",
           nrow(PROD_ROWS) == 16,
-          PROD_CLEAR == 0)
+          PROD_CLEAR == 0,
+          SAND_PROD_CLEAR == 0)
 ```
 
 **Not one of the `r nrow(PROD_ROWS)` product-term intervals excludes zero.** Across four block sizes and `r LR_DF` product terms the count that clears is `r PROD_CLEAR`. The estimates have not moved, because the estimates are not what was wrong; the intervals have widened by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)` against the naive Poisson intervals of @tbl-ppproduct, and that factor is the whole of the difference between an interaction that looks overwhelming and one that is not there.
+
+That factor is quoted only over the `r WIDEN$n` of `r nrow(PPB_RAW)` term-by-block combinations that every one of the `r format(B_BOOT, big.mark = ",")` draws could estimate, and the reason is worth recording because it is the same kind of fault the paper is about. The four product cells rest on `r min(PROD_CELLS)` to `r max(PROD_CELLS)` quadrature points each, so a resample that misses the blocks holding one of them leaves that term unidentified. `r nrow(DEGEN)` combinations were affected, every one of them involving red attack or high severity, the worst losing `r B_BOOT - min(PPB_RAW$Usable)` draws of `r format(B_BOOT, big.mark = ",")`. The percentile for such a term is taken over whichever resamples happened to contain its cells, which are the resamples that overweight them, and that inflates the interval for a reason having nothing to do with spatial dependence. Left in, those combinations put the top of the widening range at `r sprintf("%.1f", max((PPB_RAW$Upper - PPB_RAW$Lower) / (2 * 1.96 * SE_PROD[PPB_RAW$Term])))` rather than `r sprintf("%.1f", WIDEN$hi)`. The count of usable draws is reported in @tbl-ppblocks for every cell so that this is visible rather than averaged away, and none of it changes the verdict: the affected intervals were already the widest, and every product term spans zero on the identified combinations alone.
 
 What survives is thin and worth stating precisely. The only terms among those shown whose intervals exclude zero at every block size are `r MAIN_WORDS`. Neither is a product term. The regeneration data support main effects for red-stage beetle attack and low burn severity, and support no statement at all about the two agents acting together.
 
@@ -1492,17 +1676,17 @@ Two questions were asked. Neither returned the answer it was posed to find, and 
 
 **Within the burn the severity gradient is real and narrow.** Three records that do not share a measurement pathway agree that attack peaks at moderate severity, and conditioning on lodgepole cover and elevation attenuates that peak by about two fifths without removing it. The fall at high severity is not supported in any specification, so the non-monotone shape is a claim these data carry at its peak and not at its fall.
 
-**The beetle by fire interaction is not supported.** Through the likelihood the parent study uses it is emphatic: a likelihood ratio statistic of `r sprintf("%.1f", LR_STAT)` on `r LR_DF` degrees of freedom and three of four product terms excluding zero. Under inference accounting for the clustering of the seedling pattern, every product term spans zero at every block size tried. The estimates do not move; only the intervals do, by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`, and that factor is the whole distance between a confirmed interaction and none.
+**The beetle by fire interaction is not supported.** Through the likelihood the parent study uses it is emphatic: a likelihood ratio statistic of `r sprintf("%.1f", LR_STAT)` on `r LR_DF` degrees of freedom and `r N_PROD_SIG` of `r LR_DF` product terms excluding zero. Under inference accounting for the clustering of the seedling pattern, every product term spans zero at every block size tried, and a cluster-robust sandwich clustered on the same blocks agrees. The estimates do not move; only the intervals do, by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`, and that factor is the whole distance between a confirmed interaction and none.
 
 ## Inferential generality {#sec-general}
 
-The parent study's abstract describes the additive effects of increasing beetle to fire disturbance interactions. Its model has no product term. This paper set out to close that gap by adding one, and found that the data cannot support a product term either way. That is a more useful outcome than either of the two the study was designed to produce, because it locates the problem in the inference rather than in the ecology.
+The parent study reports that "areas of overlapping beetle mortality and high burn severity had significantly reduced lodgepole pine regeneration" and reads from that the suggestion that "the ecological consequences of beetle-fire interactions weaken as surface fuels decay over time". Its specification enters the two agents additively and tests no product between them. This paper adds one and finds that the data cannot support it either way, which means the additive specification was the right one to have fitted. The finding is therefore not a revision of the parent's ecology. It is a statement about what these data can be asked, and it locates the limit in the inference rather than in the landscape.
 
 The mechanism is worth stating plainly, because it is not specific to this landscape. A point process trend fitted by the Berman-Turner device is a weighted Poisson regression [@berman1992; @baddeley2000], and a Poisson likelihood treats every seedling as an independent piece of evidence about the covariates. The parent study devotes two figures and 999 Monte Carlo simulations to establishing that the seedling pattern is not independent: it reports significant clustering in every species examined, which is the expected result for conifer regeneration and not a defect [@murphy2026]. Those two facts sit in the same paper, and the second invalidates the standard errors the first is reported alongside. The residual correlogram of @fig-correlogram reaches the same verdict from inside the model, with dependence of `r PCORR$"Residual correlation"[1]` within 25 m.
 
 This is not an unusual error and it is not a careless one: clustered point patterns are routinely fitted this way and the software makes the Poisson path the path of least resistance. What makes it consequential is the size of the correction. A misspecified likelihood does not usually move a coefficient, it moves the interval around it, and the interval is what the claim rests on.
 
-**The caution this implies is not new, and the more careful practice already exists.** Modelling conifer regeneration after a large mixed-severity fire, @donato2009 excluded from their candidate set any model carrying more than five predictors or any interaction term, on the stated ground that the sample was too modest to support them, and reported relative importance among additive predictors instead. That is a judgement made in advance, on a study of comparable design and larger extent, and it reaches the conclusion this paper reaches by measurement. The difference is instructive rather than flattering to us: a product term excluded on principle costs nothing and leaves no false claim behind, whereas a product term admitted and then read through the wrong likelihood produces a confident number that has to be withdrawn later. The result reported here is therefore better understood as a quantification of a discipline that this literature already exercises than as an objection to one study that failed to.
+**The caution this implies is not new, and the more careful practice already exists.** Modelling conifer regeneration after a large mixed-severity fire, @donato2009 excluded from their candidate set any model carrying more than five predictors or any interaction term, on the stated ground that the sample was too modest to support them, and reported relative importance among additive predictors instead. That is a judgement made in advance, on a study of comparable design and larger extent, and it reaches by prior reasoning the conclusion this paper reaches by measurement. The two routes are worth having both of. A restraint exercised on principle is cheap but unquantified, and leaves open how much room the data would in fact have allowed; a restraint arrived at by measurement puts a number on it, and that number is what transfers to the next study. The result reported here is therefore a quantification of a discipline this literature already exercises, not an objection to anyone who failed to.
 
 ## Extent constraints {#sec-extent}
 
@@ -1554,7 +1738,13 @@ The title of this paper is a description of the parent study and, on this eviden
 
 **Data availability statement.** The raster surfaces analysed here are held by the parent study [@murphy2026] and are not redistributed with this manuscript. The corrected grey-stage package of 2 June 2026 is documented in [@murphy2026greyfix]. The provincial Aerial Overview Survey is open under the Open Government Licence for British Columbia [@bcaos2026]. **The executable source document that produced every number, table and figure in this paper, together with the derived inputs needed to run it, will be deposited on acceptance and the identifier added here.**
 
-**Acknowledgements.** No generative artificial intelligence was used to produce the scientific content, the analysis or the results of this manuscript.
+**Acknowledgements.** The author thanks the co-authors of the parent study for the discussion of spatial inference and remote-sensing limits in disturbance ecology out of which this analysis grew.
+
+# Declaration of generative AI and AI-assisted technologies in the manuscript preparation process
+
+During the preparation of this work, the author used Anthropic's Claude, through the Claude Code command-line interface, in order to draft and edit prose, to write and refactor the R code that produces the analysis, and to review the manuscript for consistency between its text and its computed results. After using this tool, the author reviewed and edited the content as needed and takes full responsibility for the content of the published article.
+
+Every scientific judgement in this manuscript is the author's: the questions asked, the specifications fitted, the inference procedures chosen, the interpretation of the results, and the decision about what the data do and do not support. No result is quoted from a tool's summary. Every number, table and figure is computed at render time from the source data by the executable document itself, and the assertions embedded in that document fail the render if any reported quantity ceases to match what the analysis produces.
 
 # References
 

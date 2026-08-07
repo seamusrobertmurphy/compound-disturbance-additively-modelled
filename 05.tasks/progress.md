@@ -526,3 +526,81 @@ The moderate-severity intersection raster, listed on 2 August as a Phase 2 prere
 required: the interaction is fitted from the severity class masks directly. And the Elsevier template
 vendored in `_extensions/` is now dead weight; CJFR submits to ScholarOne as a Word file and has no
 Quarto template. Leave it or remove it, but do not format to it.
+
+### Retarget to Forest Ecology and Management, and the statistics behind the headline (6 August 2026)
+
+Worked `TASK-REQUEST-2026-08-06_1.md` end to end. **Venue changed: Forest Ecology and Management,
+Elsevier, Regular paper.** The substantive outcome is that the paper's headline number moved, and
+the reason it had not moved earlier is itself the paper's subject.
+
+**The restore was smaller than it looked, and nothing had been lost.** The task asked for fuller
+drafts to be recovered from git history. Measuring word counts across every commit shows the
+manuscript grew monotonically from 6,911 words to a peak of 15,468 and sits at 15,268; the commit
+that appeared to cut 454 lines was a rewrap from hard-wrapped to one-line-per-paragraph and cost 89
+words. What did happen is `b0315a1`, "five tables converted to four figures": `tbl-withinburn`,
+`tbl-blocks`, `tbl-correlogram`, `tbl-ppcorr` and `tbl-ppblocks` became `fig-gradient`, `fig-blocks`,
+`fig-correlogram` and `fig-interaction`. All five underlying objects were still computed, so the
+figures carried the shape and the exact numbers stopped being printed. The five tables are restored
+beside their figures, which is where the numeric precision the arguments rest on now lives.
+
+**The abstract was wrong and the render said it was fine.** `pp-verdict` asserts the abstract's
+hard-coded quantities against the computed ones. Under `error: true` a failed `stopifnot` does not
+fail the render, and because that chunk also sets `output: false` the error block is suppressed from
+the document as well, so the failure produced no signal anywhere. Raising `B_BOOT` from 400 to 2,000
+and excluding unidentified resamples moved the interval widening factor from 2.4 to 7.6 down to
+**2.3 to 5.9**, the assertion failed, and the render exited 0. `error: false` is now set, and the
+gate was verified on an isolated document: a failed assertion exits 1, the same assertion under
+`error: true` exits 0. This is trap 18 in `INDEX.md`.
+
+**The 100 m bootstrap degeneracy was real, and smaller than feared.** Six of thirty-two term-by-block
+combinations lost draws, all involving red attack or high severity, the worst at 75 m losing 94 of
+2,000. `pp_boot` already computed a usable-draw count and the transmute discarded it; it is restored
+and printed per cell in `tbl-ppblocks`. The widening factor is now computed over fully identified
+combinations only. The task's diagnosis was exactly right about provenance: the 7.6 upper end came
+from `MPB_R:Fire_H` at 100 m, a cell with 1,965 usable draws. **No conclusion changed.** Every
+product term still spans zero at every block size.
+
+**The published standard errors are naive Poisson standard errors, and this is now a reproduction
+rather than an inference.** `Table12_LGCP_coefficients_CORRECTED.csv` carries a `Std.Error` column.
+Setting it beside the standard error implied by an ordinary weighted Poisson fit to the same design
+matrix gives agreement to `0e+00` on all nine terms. `tbl-ppreproduce` shows both columns and a
+`stopifnot` guards the agreement. This is the cleanest statement of the paper's central premise:
+estimating a Cox trend by the Berman-Turner composite likelihood is legitimate and consistent
+(Waagepetersen 2007, added to the bibliography, CrossRef-verified); only the variance is not.
+
+**A second variance estimate corroborates the bootstrap.** A cluster-robust sandwich clustered on the
+same spatial blocks, validated against `sandwich::vcovCL` on synthetic data to four decimals, inflates
+standard errors by 1.8 to 5.5 against the naive Poisson, in the same range as the resampling, and
+leaves 0 of 8 product-term intervals excluding zero. The asymmetry is now stated in the text: residual
+dependence these methods miss leaves intervals too narrow, which is conservative for the negative
+product-term result and adverse for the positive moderate-severity one.
+
+**Other corrections.** The word "additive" appears nowhere in Murphy et al. 2026; the paraphrase
+attributed to its abstract is replaced by two verbatim quotations plus the fitted term list, and the
+unused `beetle_fire_interactive/` intersection rasters are noted. The parent reports Ripley's
+inhomogeneous K only, against a null of non-constant intensity, not "K and L functions"; corrected.
+The collinearity argument reported the continuous lodgepole percentage rather than the binary host
+indicator the model fits; the real correlation implies a VIF of 1.38, which disqualifies nothing, and
+the binding constraint is restated as the 27-block effective sample size. Moran's I is computed
+rather than asserted: **0.66** at queen adjacency. The AI acknowledgement denied what the repository
+records; it is replaced by an Elsevier-form declaration before the references.
+
+**Verified against the parent PDF, not from memory.** The abstract and conclusions quotations, the
+Table 12 term list, the eight-row structure of one pooled plus seven per-species fits, the Ripley's K
+methods sentence, the 999 simulations, and the absence of any standard-error or variance statement
+anywhere in the paper.
+
+**FEM compliance.** `elsevier-harvard.csl` fetched from the CSL repository and verified to resolve all
+22 references. A submission reference doc, `style-elsevier-submission.docx`, was built with `BodyText`
+set to true double spacing (`w:line="480"`); the previous templates set 360, which is 1.5, overriding
+the double-spaced `docDefaults`. Line numbering is continuous and the layout single-column already.
+`Highlights.md` added, five bullets, all within 85 characters, which FEM requires and no draft had.
+
+**One task premise did not survive checking: there is no FEM word limit.** The guide's only length
+statement is that there is no special short-communication category and no minimum size. The abstract
+limit is 400 words and the manuscript's is 196. Nothing was trimmed. The live ScienceDirect guide
+could not be reached from this machine and the verified text is a 2022 capture, so **confirm the
+limit and the article-type list in a browser before submitting.**
+
+**Still open, unchanged.** The parent paper's co-authors have not been told. The 68-cell divergence
+between the `tbl-crosscheck` and `tbl-host` frames is still unexplained in the Methods.
