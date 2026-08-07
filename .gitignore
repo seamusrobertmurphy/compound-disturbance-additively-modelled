@@ -18,9 +18,12 @@ _backups/
 .claudeprism/
 tasks/
 
-CLAUDE.md
 SPEC.md
 DECISIONS.md
+
+# Word autosave folders, which duplicate the file they sit beside
+Backup of *.docx
+*/Backup of *.docx
 
 .DS_Store
 ._*
