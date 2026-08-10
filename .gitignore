@@ -43,3 +43,8 @@ Rplots.pdf
 04.references/grandfather-study/*.pdf
 01.manuscript/compound-disturbance-submission.qmd
 01.manuscript/compound-disturbance-submission.docx
+
+CLAUDE.md
+INDEX.md
+.gitignore
+_extensions/
