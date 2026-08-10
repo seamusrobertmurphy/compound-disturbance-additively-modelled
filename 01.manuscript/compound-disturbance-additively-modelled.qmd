@@ -111,7 +111,7 @@ PP_SWEEP <- c(25L, 50L, 75L, 100L)
 ## the sandwich of tbl-sandwich and the verdict chunk need it.
 PP_OK    <- PP_SWEEP[PP_SWEEP >= 75]
 
-## The class vocabulary, written once. These strings key match(), %in% and
+## The class labels, written once. These strings key match(), %in% and
 ## factor(levels=) calls that return NA on a typo rather than erroring, so eight
 ## separate copies of them was the wrong number.
 ## Each model is written once. The conditioned formula is used by the frame's
@@ -176,9 +176,10 @@ stopifnot(dir.exists(dpath("beetle_stages")), dir.exists(dpath("fire_severity"))
           dir.exists(AOS_GDB), dir.exists(GREY_FIX), file.exists(VRI_PATH))
 
 ## The annual classifications the grey union is built from. 2012 has no file, and
-## the 2013 and 2014 files use an unrelated code set, so the window stops at 2011.
+## the 2013 and 2014 files use an unrelated classification legend, so the window
+## stops at 2011.
 ## ANN is the outbreak window the grey union is built from. ANN_ALL is every
-## annual file on disk, including 2013 and 2014, whose code set is unrelated and
+## annual file on disk, including 2013 and 2014, whose legend is unrelated and
 ## which contribute no code 44. The clip claim in sec-perimeter is about all of
 ## them, so it needs the wider list rather than the modelling one.
 ANN_YEARS <- 2005:2011
@@ -226,12 +227,16 @@ Here the dating instrument is the annual Landsat classification. There are `r le
 ```{r}
 #| label: tbl-annual
 #| echo: true
-#| tbl-cap: "The annual classifications that date beetle attack, and the aerial-survey code the grey-stage union is built from. There is no file for the missing year, and the two most recent files carry none of the code at all, so the window that can be dated closes earlier than the file list suggests."
+#| tbl-cap: "The annual classifications that date beetle attack, and the red-attack class code the grey-stage union is built from. The classification legend follows the provincial survey's severity coding scheme, but the layers are Landsat classifications, not survey products. There is no file for the missing year, and the two most recent files carry none of the code at all, so the window that can be dated closes earlier than the file list suggests."
 
 ## The claim that the series is two incompatible products is load-bearing for the
 ## window used everywhere downstream, so it is derived here rather than asserted.
-## GREY_CODE is the aerial-survey red-attack class the corrected union is the
-## OR of; the deprecated rebuild tested for 1, which is a sparse trace class.
+## GREY_CODE is the red-attack class the corrected union is the OR of; the
+## deprecated rebuild tested for 1, which is a sparse trace class. The annual
+## classification legend follows the provincial survey's severity coding
+## scheme, which is a fact about the class labels and not the instrument: the
+## layers are Landsat classifications, and an earlier caption calling 44 "the
+## aerial-survey code" read as though the survey had produced them.
 GREY_CODE <- 44L
 yr_of <- function(f) as.integer(sub(".*?([0-9]{4})\\.tif$", "\\1", f))
 ANN_TAB <- tibble(Year = vapply(ANN_ALL, yr_of, integer(1)),
@@ -254,11 +259,11 @@ show(ANN_TAB, "tbl-annual", "rrl")
 
 Red-attack foliage is detectable for roughly one to three years after the attack that produced it [@wulder2006red], so a first detection dates the crown-colour change rather than the attack, and places it within a window rather than on a year.
 
-The series is also thinner than a count of its files suggests, in three separate ways. `r length(ANN_ALL)` files exist, but there is none for `r paste(YR_GAP, collapse = " or ")`. The two most recent, for `r paste(YR_EMPTY[YR_EMPTY > max(ANN_YEARS)], collapse = " and ")`, carry the aerial-survey code in not one cell, because they are a different product on a different code set and contribute nothing to the union; the window therefore closes at `r max(ANN_YEARS)` rather than at `r max(YR_ALL)`, and an analyst who read the file list as a `r min(YR_ALL)` to `r max(YR_ALL)` series would be wrong. **And two files inside the window, for `r paste(YR_EMPTY[YR_EMPTY <= max(ANN_YEARS)], collapse = " and ")`, are likewise empty of the code.** So the grey-stage union rests on `r length(YR_LIVE)` annual observations spread across a `r max(ANN_YEARS) - min(ANN_YEARS) + 1`-year window, not on `r max(ANN_YEARS) - min(ANN_YEARS) + 1` of them. The assertion above fails the render if any year outside the window ever begins to contribute.
+The series is also thinner than a count of its files suggests, in three separate ways. `r length(ANN_ALL)` files exist, but there is none for `r paste(YR_GAP, collapse = " or ")`. The two most recent, for `r paste(YR_EMPTY[YR_EMPTY > max(ANN_YEARS)], collapse = " and ")`, carry the red-attack code in not one cell, because they are a different product with a different classification legend and contribute nothing to the union; the window therefore closes at `r max(ANN_YEARS)` rather than at `r max(YR_ALL)`, and an analyst who read the file list as a `r min(YR_ALL)` to `r max(YR_ALL)` series would be wrong. And two files inside the window, for `r paste(YR_EMPTY[YR_EMPTY <= max(ANN_YEARS)], collapse = " and ")`, are likewise empty of the code. So the grey-stage union rests on `r length(YR_LIVE)` annual observations spread across a `r max(ANN_YEARS) - min(ANN_YEARS) + 1`-year window, not on `r max(ANN_YEARS) - min(ANN_YEARS) + 1` of them. The assertion above fails the render if any year outside the window ever begins to contribute.
 
 The response used throughout is that union, and it is deliberately undated: it records whether a cell was ever attacked across `r min(ANN_YEARS)` to `r max(ANN_YEARS)`, not when. Given two empty years inside the window and a detection window of one to three years on either side of each observation that is not empty, that is the honest way to use these surfaces.
 
-**Nothing in this study therefore turns on the beetle-to-fire interval**, which these surfaces do not resolve at anything finer than the window itself. The analysis asks whether a cell carried attack before the fire, not how long before.
+Nothing in this study therefore turns on the beetle-to-fire interval, which these surfaces do not resolve at anything finer than the window itself. The analysis asks whether a cell carried attack before the fire, not how long before.
 
 ## Classified surfaces {#sec-local}
 
@@ -621,7 +626,7 @@ stop_at <- function(nm, present, note) {
 
 STOPS <- bind_rows(
   stop_at("Annual rasters, any data", OBS, "nodata over the rest"),
-  stop_at("Corrected grey stage, 2005 to 2011", GREY_HIT, "union of code 44"),
+  stop_at("Corrected grey stage, 2005 to 2011", GREY_HIT, "union of red-attack code 44"),
   stop_at("Red stage, as published", RED_HIT, "substituted for a missing layer"))
 
 ## The claim below is that every annual file carries the same nodata footprint,
@@ -641,7 +646,7 @@ show(STOPS, "tbl-perimeter", "lrrrl")
 
 The annual rasters carry data on `r round(PCT_OBS_OUT, 1)` per cent of the `r format(CELLS_OUT, big.mark = ",")` cells lying outside the fire perimeter, and nodata on the rest. Every beetle surface in the study descends from those files, so every one of them inherits the boundary: the corrected grey union places `r GREY_OUT` of its `r sum(GREY_HIT)` cells outside the perimeter and the published red-stage surface places `r RED_OUT` of its `r N_RED`.
 
-**The clip is in the source data, not in any downstream step.** All `r length(ANN_ALL)` annual files carry an identical nodata count of `r format(ND_COUNTS[1], big.mark = ",")` cells, `r format(ND_OUT[1], big.mark = ",")` of which lie outside the perimeter, and the boundary it traces is the fire perimeter, which is a shape no property of beetle ecology would produce. Whoever prepared the time series clipped it to the burn before the classification that used it was ever run.
+The clip is in the source data, not in any downstream step. All `r length(ANN_ALL)` annual files carry an identical nodata count of `r format(ND_COUNTS[1], big.mark = ",")` cells, `r format(ND_OUT[1], big.mark = ",")` of which lie outside the perimeter, and the boundary it traces is the fire perimeter, which is a shape no property of beetle ecology would produce. Whoever prepared the time series clipped it to the burn before the classification that used it was ever run.
 
 ## Nested masks {#sec-nested}
 
@@ -1023,11 +1028,11 @@ show(COND, "tbl-conditioned", "llrll") |> collapse_rows(1, valign = "top")
 
 Three things follow, and only the first is a positive result.
 
-**Moderate severity survives conditioning, attenuated.** The crude coefficient of `r sprintf("%.3f", MOD_CRUDE)` falls to `r sprintf("%.3f", MOD_ADJ)` once host presence and elevation are in the model, so roughly `r round(ATTEN)` per cent of the crude association is host and terrain. What remains still clears the block interval. Adding a quadratic elevation term moves it hardly at all.
+Moderate severity survives conditioning, attenuated. The crude coefficient of `r sprintf("%.3f", MOD_CRUDE)` falls to `r sprintf("%.3f", MOD_ADJ)` once host presence and elevation are in the model, so roughly `r round(ATTEN)` per cent of the crude association is host and terrain. What remains still clears the block interval. Adding a quadratic elevation term moves it hardly at all.
 
-**High severity is never distinguishable from low.** Its interval spans zero in every specification. The non-monotone shape that all three records trace is therefore a claim the data supports at its peak and not at its fall: attack is elevated at moderate severity, and whether it declines at high severity cannot be settled from `r format(HOST$Cells[HOST$Stratum == "High severity"], big.mark = ",")` cells. **Do not report a demonstrated decline at high severity.**
+High severity is never distinguishable from low. Its interval spans zero in every specification. The non-monotone shape that all three records trace is therefore a claim the data supports at its peak and not at its fall: attack is elevated at moderate severity, and whether it declines at high severity cannot be settled from `r format(HOST$Cells[HOST$Stratum == "High severity"], big.mark = ",")` cells. Do not report a demonstrated decline at high severity.
 
-**Host cover cannot be separated from elevation here, and elevation wins.** Entered alongside elevation, host presence carries an interval that spans zero comfortably, despite the crude contrast of `r H_PRES` against `r H_ABS` per cent. Elevation is the only covariate whose interval excludes zero in every specification. This does not contradict the companion study's finding that host governs the landscape pattern. It means that at this extent the question cannot be asked, for the reason @sec-collinear gives: the two predictors move together, and `r K_500` effective observations are not enough to break the tie between them.
+Host cover cannot be separated from elevation here, and elevation wins. Entered alongside elevation, host presence carries an interval that spans zero comfortably, despite the crude contrast of `r H_PRES` against `r H_ABS` per cent. Elevation is the only covariate whose interval excludes zero in every specification. This does not contradict the companion study's finding that host governs the landscape pattern. It means that at this extent the question cannot be asked, for the reason @sec-collinear gives: the two predictors move together, and `r K_500` effective observations are not enough to break the tie between them.
 
 ```{r}
 #| label: tbl-elev
@@ -1162,7 +1167,7 @@ WEAKEST  <- SWEEP_RAW$`Block side (m)`[which.min(SWEEP_RAW$Lower)]
 WEAK_LO  <- min(SWEEP_RAW$Lower)
 ```
 
-**So the moderate-severity result is reported with its dependence stated.** It clears the interval at all `r nrow(SWEEP)` block sizes tried, so the conclusion does not rest on a convenient choice of block, and it is weakest at `r WEAKEST` m where the lower bound sits at `r sprintf("%.3f", WEAK_LO)` on `r SWEEP$Blocks[SWEEP$"Block side (m)" == WEAKEST]` blocks. That is the honest edge of what this extent supports.
+So the moderate-severity result is reported with its dependence stated. It clears the interval at all `r nrow(SWEEP)` block sizes tried, so the conclusion does not rest on a convenient choice of block, and it is weakest at `r WEAKEST` m where the lower bound sits at `r sprintf("%.3f", WEAK_LO)` on `r SWEEP$Blocks[SWEEP$"Block side (m)" == WEAKEST]` blocks. That is the honest edge of what this extent supports.
 
 The general point is not a robustness check that the study passed. It is the study's own subject matter arriving in its own inference: the extent that makes the compound-disturbance question askable at all is the same extent that decides how firmly it can be answered, and an analyst who reported only the 500 m interval would be concealing that the margin at 750 m is a hair's breadth.
 
@@ -1356,11 +1361,11 @@ show(SUP |> mutate(`In reference category` = ifelse(`In reference category`, "ye
 
 Three things follow.
 
-**The reference category is a mixture.** The published fit carries indicators for high and low severity only, so its reference is every point that is neither, which is `r format(REF_N, big.mark = ",")` quadrature points, of which `r format(REF_MOD, big.mark = ",")` are moderate severity and the remainder unburned or unclassified. Moderate is not a neutral baseline here: it is the class that carries the most beetle attack of the three, as @fig-gradient shows across the whole burn and this table repeats inside the plots. So the published fire coefficients are contrasts against a pooled category that is `r round(100 * REF_MOD / REF_N)` per cent the severity class with the strongest beetle association. Nothing in the published fit is wrong about this, but neither coefficient means what its label suggests.
+The reference category is a mixture. The published fit carries indicators for high and low severity only, so its reference is every point that is neither, which is `r format(REF_N, big.mark = ",")` quadrature points, of which `r format(REF_MOD, big.mark = ",")` are moderate severity and the remainder unburned or unclassified. Moderate is not a neutral baseline here: it is the class that carries the most beetle attack of the three, as @fig-gradient shows across the whole burn and this table repeats inside the plots. So the published fire coefficients are contrasts against a pooled category that is `r round(100 * REF_MOD / REF_N)` per cent the severity class with the strongest beetle association. Nothing in the published fit is wrong about this, but neither coefficient means what its label suggests.
 
-**The grey-stage term is now adequately supported, and was not always.** The corrected union carries grey attack on `r format(GREY_Q, big.mark = ",")` of `r format(nrow(Q), big.mark = ",")` quadrature points. The layer it replaced, built by a value test the parent study later diagnosed as wrong, carried grey attack on seven 30 m cells in the same plots [@murphy2026greyfix]; a coefficient reported at p \< 10^-10^ in the first submission rested on those seven cells and the corrected refit moved it to zero. That correction was made before publication and is to the parent study's credit, and is recorded here because it is the same failure mode this paper is about, caught one stage earlier.
+The grey-stage term is now adequately supported, and was not always. The corrected union carries grey attack on `r format(GREY_Q, big.mark = ",")` of `r format(nrow(Q), big.mark = ",")` quadrature points. The layer it replaced, built by a value test the parent study later diagnosed as wrong, carried grey attack on seven 30 m cells in the same plots [@murphy2026greyfix]; a coefficient reported at p \< 10^-10^ in the first submission rested on those seven cells and the corrected refit moved it to zero. That correction was made before publication and is to the parent study's credit, and is recorded here because it is the same failure mode this paper is about, caught one stage earlier.
 
-**Red attack is confined as @sec-provenance describes**, appearing on `r format(RED_Q, big.mark = ",")` quadrature points and on none outside the classified severity classes, which is the narrower of the two clips arriving inside the model.
+Red attack is confined as @sec-provenance describes, appearing on `r format(RED_Q, big.mark = ",")` quadrature points and on none outside the classified severity classes, which is the narrower of the two clips arriving inside the model.
 
 ## Product terms {#sec-ppproduct}
 
@@ -1607,7 +1612,7 @@ show(SAND |> select(-lo, -hi) |>
 
 The sandwich of @tbl-sandwich agrees with the bootstrap of @tbl-ppblocks on both counts. It inflates the standard errors by a factor of `r sprintf("%.1f", SAND_RANGE[1])` to `r sprintf("%.1f", SAND_RANGE[2])`, in the same range as the interval widening the resampling produces, and of the `r SAND_N_PROD` product-term intervals it implies across the block sizes the correlogram licenses, `r SAND_PROD_CLEAR` exclude zero. Two estimators that share an assumption are not independent evidence, and both assume that blocks are independent of one another. But they differ in everything else, and a result that survived one because of an artefact of the other's construction would not survive both.
 
-**The direction of the remaining error is worth stating, because it does not run the same way for the two results.** Any residual dependence these methods fail to capture leaves the intervals still too narrow. For the product terms that is a conservative failure: the intervals reported here are, if anything, narrower than they should be, and they already span zero, so a fuller accounting of dependence can only strengthen the conclusion that the interaction is unsupported. For the moderate-severity peak of @sec-conditioning it runs the other way. That result is positive, it rests on an interval excluding zero, and an interval that is too narrow is exactly what would manufacture it. The negative result here is therefore the more secure of the two, and the positive one is reported at @sec-blocks with its weakest block size named for that reason.
+The direction of the remaining error is worth stating, because it does not run the same way for the two results. Any residual dependence these methods fail to capture leaves the intervals still too narrow. For the product terms that is a conservative failure: the intervals reported here are, if anything, narrower than they should be, and they already span zero, so a fuller accounting of dependence can only strengthen the conclusion that the interaction is unsupported. For the moderate-severity peak of @sec-conditioning it runs the other way. That result is positive, it rests on an interval excluding zero, and an interval that is too narrow is exactly what would manufacture it. The negative result here is therefore the more secure of the two, and the positive one is reported at @sec-blocks with its weakest block size named for that reason.
 
 ```{r}
 #| label: pp-verdict
@@ -1658,7 +1663,7 @@ stopifnot(sprintf("%.3f", MOD_ADJ) == "0.416",
           SAND_PROD_CLEAR == 0)
 ```
 
-**Not one of the `r nrow(PROD_ROWS)` product-term intervals excludes zero.** Across four block sizes and `r LR_DF` product terms the count that clears is `r PROD_CLEAR`. The estimates have not moved, because the estimates are not what was wrong; the intervals have widened by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)` against the naive Poisson intervals of @tbl-ppproduct, and that factor is the whole of the difference between an interaction that looks overwhelming and one that is not there.
+Not one of the `r nrow(PROD_ROWS)` product-term intervals excludes zero. Across four block sizes and `r LR_DF` product terms the count that clears is `r PROD_CLEAR`. The estimates have not moved, because the estimates are not what was wrong; the intervals have widened by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)` against the naive Poisson intervals of @tbl-ppproduct, and that factor is the whole of the difference between an interaction that looks overwhelming and one that is not there.
 
 That factor is quoted only over the `r WIDEN$n` of `r nrow(PPB_RAW)` term-by-block combinations that every one of the `r format(B_BOOT, big.mark = ",")` draws could estimate, and the reason is worth recording because it is the same kind of fault the paper is about. The four product cells rest on `r min(PROD_CELLS)` to `r max(PROD_CELLS)` quadrature points each, so a resample that misses the blocks holding one of them leaves that term unidentified. `r nrow(DEGEN)` combinations were affected, every one of them involving red attack or high severity, the worst losing `r B_BOOT - min(PPB_RAW$Usable)` draws of `r format(B_BOOT, big.mark = ",")`. The percentile for such a term is taken over whichever resamples happened to contain its cells, which are the resamples that overweight them, and that inflates the interval for a reason having nothing to do with spatial dependence. Left in, those combinations put the top of the widening range at `r sprintf("%.1f", max((PPB_RAW$Upper - PPB_RAW$Lower) / (2 * 1.96 * SE_PROD[PPB_RAW$Term])))` rather than `r sprintf("%.1f", WIDEN$hi)`. The count of usable draws is reported in @tbl-ppblocks for every cell so that this is visible rather than averaged away, and none of it changes the verdict: the affected intervals were already the widest, and every product term spans zero on the identified combinations alone.
 
@@ -1672,11 +1677,11 @@ Two questions were asked. Neither returned the answer it was posed to find, and 
 
 ## Principal findings {#sec-found}
 
-**Beetle and fire cannot be compared across the fire perimeter here, because the surfaces that would do it stop at the perimeter.** The annual classifications from which every local beetle surface descends carry nodata across almost all of the unburned forest, and carried it before any classification that used them was run. The consequence is not a caveat: a contingency table built across the boundary reports attack rising from a fraction of a per cent in unburned forest to a fifth at moderate severity, and measures the mask. The provincial Aerial Overview Survey, never clipped, finds attack outside the perimeter at a rate no lower than inside it.
+Beetle and fire cannot be compared across the fire perimeter here, because the surfaces that would do it stop at the perimeter. The annual classifications from which every local beetle surface descends carry nodata across almost all of the unburned forest, and carried it before any classification that used them was run. The consequence is not a caveat: a contingency table built across the boundary reports attack rising from a fraction of a per cent in unburned forest to a fifth at moderate severity, and measures the mask. The provincial Aerial Overview Survey, never clipped, finds attack outside the perimeter at a rate no lower than inside it.
 
-**Within the burn the severity gradient is real and narrow.** Three records that do not share a measurement pathway agree that attack peaks at moderate severity, and conditioning on lodgepole cover and elevation attenuates that peak by about two fifths without removing it. The fall at high severity is not supported in any specification, so the non-monotone shape is a claim these data carry at its peak and not at its fall.
+Within the burn the severity gradient is real and narrow. Three records that do not share a measurement pathway agree that attack peaks at moderate severity, and conditioning on lodgepole cover and elevation attenuates that peak by about two fifths without removing it. The fall at high severity is not supported in any specification, so the non-monotone shape is a claim these data carry at its peak and not at its fall.
 
-**The beetle by fire interaction is not supported.** Through the likelihood the parent study uses it is emphatic: a likelihood ratio statistic of `r sprintf("%.1f", LR_STAT)` on `r LR_DF` degrees of freedom and `r N_PROD_SIG` of `r LR_DF` product terms excluding zero. Under inference accounting for the clustering of the seedling pattern, every product term spans zero at every block size tried, and a cluster-robust sandwich clustered on the same blocks agrees. The estimates do not move; only the intervals do, by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`, and that factor is the whole distance between a confirmed interaction and none.
+The beetle by fire interaction is not supported. Through the likelihood the parent study uses it is emphatic: a likelihood ratio statistic of `r sprintf("%.1f", LR_STAT)` on `r LR_DF` degrees of freedom and `r N_PROD_SIG` of `r LR_DF` product terms excluding zero. Under inference accounting for the clustering of the seedling pattern, every product term spans zero at every block size tried, and a cluster-robust sandwich clustered on the same blocks agrees. The estimates do not move; only the intervals do, by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`, and that factor is the whole distance between a confirmed interaction and none.
 
 ## Inferential generality {#sec-general}
 
@@ -1686,7 +1691,7 @@ The mechanism is worth stating plainly, because it is not specific to this lands
 
 This is not an unusual error and it is not a careless one: clustered point patterns are routinely fitted this way and the software makes the Poisson path the path of least resistance. What makes it consequential is the size of the correction. A misspecified likelihood does not usually move a coefficient, it moves the interval around it, and the interval is what the claim rests on.
 
-**The caution this implies is not new, and the more careful practice already exists.** Modelling conifer regeneration after a large mixed-severity fire, @donato2009 excluded from their candidate set any model carrying more than five predictors or any interaction term, on the stated ground that the sample was too modest to support them, and reported relative importance among additive predictors instead. That is a judgement made in advance, on a study of comparable design and larger extent, and it reaches by prior reasoning the conclusion this paper reaches by measurement. The two routes are worth having both of. A restraint exercised on principle is cheap but unquantified, and leaves open how much room the data would in fact have allowed; a restraint arrived at by measurement puts a number on it, and that number is what transfers to the next study. The result reported here is therefore a quantification of a discipline this literature already exercises, not an objection to anyone who failed to.
+The caution this implies is not new, and the more careful practice already exists. Modelling conifer regeneration after a large mixed-severity fire, @donato2009 excluded from their candidate set any model carrying more than five predictors or any interaction term, on the stated ground that the sample was too modest to support them, and reported relative importance among additive predictors instead. That is a judgement made in advance, on a study of comparable design and larger extent, and it reaches by prior reasoning the conclusion this paper reaches by measurement. The two routes are worth having both of. A restraint exercised on principle is cheap but unquantified, and leaves open how much room the data would in fact have allowed; a restraint arrived at by measurement puts a number on it, and that number is what transfers to the next study. The result reported here is therefore a quantification of a discipline this literature already exercises, not an objection to anyone who failed to.
 
 ## Extent constraints {#sec-extent}
 
@@ -1700,15 +1705,15 @@ The same collision governs the inference. A block bootstrap needs blocks large e
 
 Four of this study's five results are negative, and they are reported at the same length and in the same register as the one that is not. That is a deliberate choice rather than an apology. The same practice is visible in recent work on burn severity in this literature: @estabrook2025 report a severity model with acceptable discrimination and then state plainly that the map built from it performed poorly, with a residual spatial structure their own diagnostic detected. A negative applied result reported clearly is more useful than a positive one reported without its diagnostics, and the limitations below are set out in that spirit.
 
-**The interaction result is a null, and nulls have a floor.** Nothing here shows that beetle mortality and burn severity do not interact. It shows that `r format(N_DATA, big.mark = ",")` seedlings across `r sprintf("%.1f", WIN_HA)` ha, clustered as this pattern is, cannot resolve a difference of differences across four severity-by-attack combinations. A larger or better distributed sample could return a different answer, and this study offers no estimate of how much larger.
+The interaction result is a null, and nulls have a floor. Nothing here shows that beetle mortality and burn severity do not interact. It shows that `r format(N_DATA, big.mark = ",")` seedlings across `r sprintf("%.1f", WIN_HA)` ha, clustered as this pattern is, cannot resolve a difference of differences across four severity-by-attack combinations. A larger or better distributed sample could return a different answer, and this study offers no estimate of how much larger.
 
-**Question A is answered in a reduced form.** The within-burn gradient is not the question the compound-disturbance literature asks, which is whether beetle-killed stands burn differently from stands that were not attacked. Recovering that comparison means rebuilding the classification over the unclipped landscape, a reprocessing task that re-treads the parent study's published methods.
+Question A is answered in a reduced form. The within-burn gradient is not the question the compound-disturbance literature asks, which is whether beetle-killed stands burn differently from stands that were not attacked. Recovering that comparison means rebuilding the classification over the unclipped landscape, a reprocessing task that re-treads the parent study's published methods.
 
-**Two beetle surfaces disagree and only one is documented.** The corrected grey-stage union is preferred throughout: three times denser than the published red-stage surface, observed throughout the perimeter, and derived by a script that survives [@murphy2026greyfix]. The red-stage surface is a substitution for a layer absent from the parent repository and searched for without success.
+Two beetle surfaces disagree and only one is documented. The corrected grey-stage union is preferred throughout: three times denser than the published red-stage surface, observed throughout the perimeter, and derived by a script that survives [@murphy2026greyfix]. The red-stage surface is a substitution for a layer absent from the parent repository and searched for without success.
 
-**The severity reference category is inherited, not chosen.** The published specification carries indicators for high and low severity only, so moderate severity is pooled with unburned and unclassified ground into a reference that is `r round(100 * REF_MOD / REF_N)` per cent moderate, the class carrying the most beetle attack. It is reproduced rather than repaired, because the object was to test the published model rather than replace it, but no fire coefficient here means quite what its label says.
+The severity reference category is inherited, not chosen. The published specification carries indicators for high and low severity only, so moderate severity is pooled with unburned and unclassified ground into a reference that is `r round(100 * REF_MOD / REF_N)` per cent moderate, the class carrying the most beetle attack. It is reproduced rather than repaired, because the object was to test the published model rather than replace it, but no fire coefficient here means quite what its label says.
 
-**The provincial survey is a coarse instrument**, its polygons sketched from an aircraft at a mapping scale far coarser than 30 m. It is used only as a check on whether ground outside the perimeter carries attack at all, which it can answer, and not as a measurement of severity, which it cannot.
+The provincial survey is a coarse instrument, its polygons sketched from an aircraft at a mapping scale far coarser than 30 m. It is used only as a check on whether ground outside the perimeter carries attack at all, which it can answer, and not as a measurement of severity, which it cannot.
 
 ## Research priorities {#sec-next}
 
@@ -1720,31 +1725,29 @@ Compound disturbance is described as an interaction far more often than it is te
 
 Three findings, stated at the confidence the data support.
 
-1.  **A provenance result.** The beetle surfaces underlying the parent study stop at the fire perimeter, in the source files, before classification. Any comparison of beetle attack across that boundary measures the clip and not the forest. This is checkable in any study that inherits rasters it did not build, and it is cheap to check.
+1.  A provenance result. The beetle surfaces underlying the parent study stop at the fire perimeter, in the source files, before classification. Any comparison of beetle attack across that boundary measures the clip and not the forest. This is checkable in any study that inherits rasters it did not build, and it is cheap to check.
 
-2.  **A narrow ecological result.** Inside the burn, beetle attack is elevated at moderate severity relative to low, by `r sprintf("%.3f", MOD_ADJ)` in log-odds after conditioning on host and elevation, and it clears a spatial block bootstrap interval at every block size the extent supports. Attack at high severity is not distinguishable from attack at low severity in any specification.
+2.  A narrow ecological result. Inside the burn, beetle attack is elevated at moderate severity relative to low, by `r sprintf("%.3f", MOD_ADJ)` in log-odds after conditioning on host and elevation, and it clears a spatial block bootstrap interval at every block size the extent supports. Attack at high severity is not distinguishable from attack at low severity in any specification.
 
-3.  **A negative result about the interaction, and a positive one about why.** The beetle by fire product term is decisive under the published Poisson likelihood and absent under inference that accounts for the clustering the parent study itself documents. The coefficients are identical either way. Only the intervals differ, and they differ by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`.
+3.  A negative result about the interaction, and a positive one about why. The beetle by fire product term is decisive under the published Poisson likelihood and absent under inference that accounts for the clustering the parent study itself documents. The coefficients are identical either way. Only the intervals differ, and they differ by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`.
 
 The title of this paper is a description of the parent study and, on this evidence, a recommendation. Beetle and fire were modelled additively there. Nothing found here supports modelling them any other way with data of this extent, and the apparent support for doing so came from a likelihood that counted clustered seedlings as independent observations. The honest summary of a compound-disturbance interaction in this landscape is that it has not been demonstrated, that these data cannot demonstrate it, and that the confidence with which it can appear to have been demonstrated is the finding most worth carrying elsewhere.
 
 # Author statements {#sec-statements}
 
-**Author contribution statement.** SM: conceptualisation, methodology, software, formal analysis, data curation, writing (original draft), writing (review and editing), visualisation.
+Author contribution statement. SM: conceptualisation, methodology, software, formal analysis, data curation, writing (original draft), writing (review and editing), visualisation.
 
-**Competing interests statement.** The author is also an author of Murphy et al. (2026), the study re-analysed here, and declares no other competing interests.
+Competing interests statement. The author is also an author of Murphy et al. (2026), the study re-analysed here, and declares no other competing interests.
 
-**Funding statement.** The author declares no specific funding for this work.
+Funding statement. The author declares no specific funding for this work.
 
-**Data availability statement.** The raster surfaces analysed here are held by the parent study [@murphy2026] and are not redistributed with this manuscript. The corrected grey-stage package of 2 June 2026 is documented in [@murphy2026greyfix]. The provincial Aerial Overview Survey is open under the Open Government Licence for British Columbia [@bcaos2026]. **The executable source document that produced every number, table and figure in this paper, together with the derived inputs needed to run it, will be deposited on acceptance and the identifier added here.**
+Data availability statement. The raster surfaces analysed here are held by the parent study [@murphy2026] and are not redistributed with this manuscript. The corrected grey-stage package of 2 June 2026 is documented in [@murphy2026greyfix]. The provincial Aerial Overview Survey is open under the Open Government Licence for British Columbia [@bcaos2026]. The executable source document that produced every number, table and figure in this paper, together with the derived inputs needed to run it, will be deposited on acceptance and the identifier added here.
 
-**Acknowledgements.** The author thanks the co-authors of the parent study for the discussion of spatial inference and remote-sensing limits in disturbance ecology out of which this analysis grew.
+Acknowledgements. The author thanks the co-authors of the parent study for the discussion of spatial inference and remote-sensing limits in disturbance ecology out of which this analysis grew.
 
 # Declaration of generative AI and AI-assisted technologies in the manuscript preparation process
 
-During the preparation of this work, the author used Anthropic's Claude, through the Claude Code command-line interface, in order to draft and edit prose, to write and refactor the R code that produces the analysis, and to review the manuscript for consistency between its text and its computed results. After using this tool, the author reviewed and edited the content as needed and takes full responsibility for the content of the published article.
-
-Every scientific judgement in this manuscript is the author's: the questions asked, the specifications fitted, the inference procedures chosen, the interpretation of the results, and the decision about what the data do and do not support. No result is quoted from a tool's summary. Every number, table and figure is computed at render time from the source data by the executable document itself, and the assertions embedded in that document fail the render if any reported quantity ceases to match what the analysis produces.
+All prose, writing, results in the analysis and reporting contained within this document was derived and verified by the author. No generative tool was used to create, alter or manipulate research data or results. The author is responsible for the accuracy of all content.
 
 # References
 

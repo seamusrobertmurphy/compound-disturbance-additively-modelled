@@ -43,15 +43,16 @@ only where the annual rasters actually observe, which the manuscript computes ra
    substituted for it. Look for the missing layer before using the red surface again.
 
 3. **Use `mpb_grey_corrected.tif`, never `GreyStage.tif` (270) or `mpb_grey_attackcount.tif` (932).**
-   The legacy rebuild tested `annual == 1`, but the annual rasters encode aerial-survey severity
-   codes rather than a binary mask, and `1` is a sparse trace class. The active red-attack code is
-   `44`. The correct union is 1,541 cells, which reproduces independently. Corrected regeneration
+   The legacy rebuild tested `annual == 1`, but the annual rasters carry a classification legend
+   rather than a binary mask, and `1` is a sparse trace class. The legend follows the provincial
+   survey's severity coding scheme; the layers themselves are Landsat classifications, not survey
+   products. The active red-attack code is `44`. The correct union is 1,541 cells, which reproduces independently. Corrected regeneration
    values that go with it are grey 33.6 per cent with 1,315 seedlings, red 24.7 per cent with 965.
    The Cox grey-stage coefficient in the published Table 12 was computed on a sample seven to eight
    times smaller than it should have been; the corrected refit gives beta near zero, p = 0.99.
 
-4. **The annual series is two products, not one.** Files for 2005 to 2011 share a code set of
-   1, 36, 44, 61, 77, 80, 94 and 105. Files for 2013 and 2014 carry codes 2 to 7 and no code 44 at
+4. **The annual series is two products, not one.** Files for 2005 to 2011 share a classification
+   legend of codes 1, 36, 44, 61, 77, 80, 94 and 105. Files for 2013 and 2014 carry codes 2 to 7 and no code 44 at
    all, and there is no 2012 file. So the code-44 union is identical whether the window is 2005 to
    2011 or 2005 to 2014, which looks like agreement between two windows and is nothing of the kind.
 

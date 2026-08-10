@@ -8,14 +8,24 @@ the current render rather than retyped so the two cannot drift. Rerun after any
 
     python3 03.outputs/build-readme.py
 
-Two things this script exists to handle:
+Three things this script exists to handle:
 
 1. GitHub does not render the Pandoc grid tables Quarto produces, so a paste of
-   the render would print a wall of plus signs. Tables are converted to
-   GitHub-flavoured pipe tables, with column alignment preserved.
+   the render would print a wall of plus signs. Tables are converted to HTML
+   tables, with column alignment preserved.
 2. Figures are decoded from the HTML render's embedded base64, which keeps them
    in document order and avoids picking up the Word reference template's own
    images.
+3. Every table and figure is standardised to span the full README column, per
+   the 10 August request. GitHub's stylesheet sizes tables to their content
+   (width: max-content, capped at max-width: 100%), strips style attributes,
+   and ignores a width attribute on the table element itself, so pipe tables
+   cannot be widened. Pixel width hints on header cells do enter the
+   max-content computation, so each table carries per-column hints that sum
+   well past the column width and the cap clamps every table to exactly 100
+   per cent. If GitHub ever neutralises the hints the tables fall back to
+   content-sized, which is today's appearance, not something worse. Figures
+   get width="100%" for the same uniformity.
 """
 import base64
 import html
@@ -67,7 +77,13 @@ def front_matter() -> dict:
     return {k: re.sub(r"\s+", " ", v).strip() for k, v in out.items()}
 
 
-def to_pipe_table(chunk: str) -> str | None:
+# Width hints sum to twice a comfortable README column so the max-width cap
+# clamps every table to exactly the full column, whatever the viewer's window.
+HINT_TOTAL = 2400
+HINT_MIN = 90
+
+
+def to_html_table(chunk: str) -> str | None:
     m = re.search(r"<table[^>]*>(.*?)</table>", chunk, re.S)
     if not m:
         return None
@@ -80,11 +96,11 @@ def to_pipe_table(chunk: str) -> str | None:
     aligns = []
     for attrs in re.findall(r"<th([^>]*)>", head.group(1)):
         if "text-align: right" in attrs:
-            aligns.append("---:")
+            aligns.append("right")
         elif "text-align: center" in attrs:
-            aligns.append(":---:")
+            aligns.append("center")
         else:
-            aligns.append(":---")
+            aligns.append("left")
     rows = []
     for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", body.group(1), re.S):
         cells = [clean(c) for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", tr, re.S)]
@@ -93,15 +109,25 @@ def to_pipe_table(chunk: str) -> str | None:
     if not heads or not rows:
         return None
     while len(aligns) < len(heads):
-        aligns.append(":---")
-    esc = lambda s: s.replace("|", "\\|")
-    out = [
-        "| " + " | ".join(esc(x) for x in heads) + " |",
-        "| " + " | ".join(aligns[: len(heads)]) + " |",
-    ]
+        aligns.append("left")
+    rows = [(r + [""] * len(heads))[: len(heads)] for r in rows]
+
+    # Column hints proportional to the longest content in each column, so the
+    # clamp preserves the proportions a content-sized table would have had.
+    longest = [max([len(h)] + [len(r[i]) for r in rows]) for i, h in enumerate(heads)]
+    total = sum(max(n, 4) for n in longest)
+    hints = [max(HINT_MIN, round(HINT_TOTAL * max(n, 4) / total)) for n in longest]
+
+    esc = html.escape
+    out = ["<table>", "<thead>", "<tr>"]
+    for h, a, w in zip(heads, aligns, hints):
+        out.append(f'<th align="{a}" width="{w}">{esc(h)}</th>')
+    out += ["</tr>", "</thead>", "<tbody>"]
     for r in rows:
-        r = (r + [""] * len(heads))[: len(heads)]
-        out.append("| " + " | ".join(esc(x) for x in r) + " |")
+        out.append("<tr>" +
+                   "".join(f'<td align="{a}">{esc(c)}</td>' for c, a in zip(r, aligns)) +
+                   "</tr>")
+    out += ["</tbody>", "</table>"]
     return "\n".join(out)
 
 
@@ -165,9 +191,10 @@ def main() -> None:
                 continue
             n_fig += 1
             parts += [f"### {label or 'Figure'}", "",
-                      f"![{label}]({path.as_posix()})", "", f"*{text}*", ""]
+                      f'<img src="{path.as_posix()}" alt="{label}" width="100%">',
+                      "", f"*{text}*", ""]
         else:
-            table = to_pipe_table(chunk)
+            table = to_html_table(chunk)
             if not table:
                 continue
             n_tbl += 1

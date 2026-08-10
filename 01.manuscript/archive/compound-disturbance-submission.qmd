@@ -1,0 +1,1752 @@
+---
+title: "Compound disturbance, additively modelled"
+subtitle: "Testing whether beetle mortality and fire severity interact, in the landscape and in the model, Darkwoods Conservation Area, British Columbia"
+author:
+  - name: Seamus Murphy
+    orcid: 0000-0002-1792-0351
+    email: seamusrobertmurphy@gmail.com
+abstract: >
+  Compound disturbance is routinely described as an interaction and routinely modelled as a sum.
+  This study separates them over a mountain pine beetle outbreak and the mixed-severity wildfire
+  that followed it, in the southern Selkirk Mountains of British Columbia. Every beetle surface in
+  the parent study descends from annual classifications clipped to the fire perimeter at source, and
+  an unclipped provincial survey records attack outside the perimeter at a rate no lower than inside
+  it, so any burned against unburned contrast measures the clip. Inside it, three records sharing no
+  measurement pathway agree that attack peaks at moderate severity. The peak holds after
+  conditioning on host cover and elevation, at 0.416 in log-odds against low severity; the fall at
+  high severity does not. Refitting the parent study's point process model with beetle by fire
+  product terms returns an emphatic interaction under the Poisson likelihood it is fitted with, and
+  none under inference respecting the clustering that study documents. The coefficients are
+  identical, the intervals 2.3 to 5.9 times wider, and not one of sixteen excludes zero; a
+  cluster-robust sandwich agrees. These data cannot demonstrate a beetle by fire interaction; the
+  confidence with which they appear to is the transferable result.
+keywords:
+  - compound disturbance
+  - mountain pine beetle
+  - burn severity
+  - interaction terms
+  - data provenance
+  - analysis extent
+
+date: today
+format:
+  docx:
+    prefer-html: true
+    reference-doc: ../04.references/style-elsevier-submission.docx
+    highlight-style: pygments
+  html:
+    page-layout: full
+    toc: true
+    number-sections: true
+    embed-resources: true
+    toc-title: "**Table of Contents**"
+    toc-location: right
+    toc-depth: 3
+    theme:
+      - ../04.references/style.scss
+      - cosmo
+    code-fold: false
+    code-tools: true
+    code-link: true
+    grid:
+      body-width: 1100px
+      margin-width: 220px
+
+execute:
+  eval: true
+  echo: false
+  warning: false
+  message: false
+  error: false
+  comment: NA
+
+always_allow_html: true
+engine: knitr
+citeproc: true
+editor: visual
+bibliography: ../04.references/references-compound.bib
+csl: ../04.references/elsevier-harvard.csl
+df-print: kable
+---
+
+```{r}
+#| label: setup
+#| echo: false
+#| output: false
+
+## Every quantity in this manuscript is computed here at render time. Nothing is
+## quoted from a prior session's notes.
+## patchwork is used only through its `+` and `/` operators in fig-mask, so it
+## looks unused to a search for function calls. Removing it breaks the figure.
+pkgs <- c("terra", "sf", "knitr", "kableExtra", "ggplot2", "dplyr", "tidyr",
+          "tibble", "tidyterra", "patchwork", "ggspatial", "rnaturalearth")
+invisible(lapply(pkgs, function(p) library(p, character.only = TRUE)))
+## Only what the YAML `execute:` block cannot express. echo, message, warning,
+## error and comment are already set there; restating them here would let this
+## line silently override the YAML a referee is reading.
+knitr::opts_chunk$set(dpi = 300, fig.align = "center")
+options(scipen = 999)
+theme_set(theme_minimal(base_size = 10) +
+          theme(panel.grid.minor = element_blank(),
+                plot.title = element_text(face = "bold", size = 10)))
+
+OUTBREAK <- 2005:2014   # red-attack window preceding the 2015 fire, which burned in 2015
+## 2,000 replicates rather than the 400 of earlier drafts. Three conclusions sat
+## within about one Monte Carlo standard error of reversing at 400, where the
+## error on a percentile endpoint runs to roughly 0.02 in log-odds, which is the
+## same size as the margins being read. At 2,000 it is halved.
+B_BOOT   <- 2000L       # spatial block bootstrap replicates
+BLOCK_M  <- 500L        # primary block side in metres
+BLOCK_SWEEP <- c(300L, 400L, 500L, 750L)
+
+## The point process analysis of sec-interaction works inside three four-hectare
+## plots rather than across the burn, so it needs its own block sizes. They are
+## an order of magnitude smaller because the plots are, and the residual
+## correlogram in tbl-ppcorr is what sets them.
+PP_DX    <- 10L         # quadrature spacing of the published fit, in metres
+PP_SWEEP <- c(25L, 50L, 75L, 100L)
+## The subset of those sizes the residual range actually licenses. A 25 m block
+## does not contain the dependence, so quoting the 25 m run's block count would
+## credit the study with resolution it does not have. Declared here because both
+## the sandwich of tbl-sandwich and the verdict chunk need it.
+PP_OK    <- PP_SWEEP[PP_SWEEP >= 75]
+
+## The class vocabulary, written once. These strings key match(), %in% and
+## factor(levels=) calls that return NA on a typo rather than erroring, so eight
+## separate copies of them was the wrong number.
+## Each model is written once. The conditioned formula is used by the frame's
+## length guard, the coefficient table, the block sweep and the correlogram, and
+## four copies of it would drift.
+F_CRUDE <- y ~ sev
+F_ADJ   <- y ~ sev + host + ec
+F_QUAD  <- y ~ sev + host + ec + I(ec^2)
+
+SEV_LEVELS <- c("Low", "Moderate", "High")            # the three burned classes
+UNCLASSED  <- "Inside perimeter, unclassified"
+OUTSIDE    <- "Outside perimeter"
+ROW_ORDER  <- c(OUTSIDE, UNCLASSED, SEV_LEVELS)       # display order for class tables
+
+## Every table in the document is also written to 03.outputs/TBL as CSV, from the
+## same object that renders, so the two cannot drift.
+TBL_DIR <- file.path("..", "03.outputs", "TBL")
+dir.create(TBL_DIR, showWarnings = FALSE, recursive = TRUE)
+keep <- function(x, slug) {
+  write.csv(x, file.path(TBL_DIR, paste0(slug, ".csv")), row.names = FALSE)
+  x
+}
+
+## Every table in the document is rendered the same way. One helper so the
+## styling cannot drift between eleven call sites.
+show <- function(x, slug, align) {
+  kable(keep(x, slug), align = align) |> kable_styling(full_width = FALSE)
+}
+
+## Cell values as a plain vector. `values(r)[, 1]` returns a one-column matrix
+## and was written out twenty-eight times before this existed.
+vals <- function(r) terra::values(r, mat = FALSE)
+```
+
+```{r}
+#| label: paths
+#| echo: false
+
+DATA_ROOT <- Sys.getenv("DARKWOODS_DATA",
+  "/Users/seamus/repos/publications-pending/Darkwoods-Disturbance-Paper/3.SpatialData")
+dpath <- function(...) file.path(DATA_ROOT, ...)
+
+## The provincial survey is the independent check on the local classified layers.
+## It is bulk data shared with the companion refugia study rather than duplicated
+## here; see 02.inputs/aerial-survey/README.md.
+AOS_GDB <- Sys.getenv("DARKWOODS_AOS",
+  paste0("/Volumes/PortableSSD/Github/claude-science-library/publications-academic/",
+         "beetle-topography-and-wind-study/02.inputs/aos/pest_infestation_poly.gdb"))
+
+## The corrected grey-stage raster of 2 June 2026 lives in the parent study's
+## archive alongside the memo that derives it; see 02.inputs/beetle-stages/README.md.
+GREY_FIX <- Sys.getenv("DARKWOODS_GREYFIX",
+  file.path(dirname(DATA_ROOT), "Archive", "Greystage_Raster_Fix_2026-06-02"))
+
+## The provincial inventory supplies the host layer, shared with the companion
+## refugia study; see 02.inputs/vri/README.md.
+VRI_PATH <- Sys.getenv("DARKWOODS_VRI",
+  paste0("/Volumes/PortableSSD/Github/claude-science-library/publications-academic/",
+         "beetle-topography-and-wind-study/02.inputs/vri/vri_darkwoods.geojson"))
+
+stopifnot(dir.exists(dpath("beetle_stages")), dir.exists(dpath("fire_severity")),
+          dir.exists(AOS_GDB), dir.exists(GREY_FIX), file.exists(VRI_PATH))
+
+## The annual classifications the grey union is built from. 2012 has no file, and
+## the 2013 and 2014 files use an unrelated code set, so the window stops at 2011.
+## ANN is the outbreak window the grey union is built from. ANN_ALL is every
+## annual file on disk, including 2013 and 2014, whose code set is unrelated and
+## which contribute no code 44. The clip claim in sec-perimeter is about all of
+## them, so it needs the wider list rather than the modelling one.
+ANN_YEARS <- 2005:2011
+ANN <- sort(list.files(dpath("beetle_stages"), full.names = TRUE,
+                       pattern = paste0("^Beetle\\.O.*(", paste(ANN_YEARS, collapse = "|"), ")\\.tif$")))
+ANN_ALL <- sort(list.files(dpath("beetle_stages"), full.names = TRUE,
+                           pattern = "^Beetle\\.O.*[0-9]{4}\\.tif$"))
+stopifnot(length(ANN) == length(ANN_YEARS), length(ANN_ALL) >= length(ANN))
+```
+
+# Introduction
+
+Mountain pine beetle outbreak and wildfire increasingly overlap in the conifer forests of western North America, and the overlap is usually described in the language of interaction. Whether the description is earned is a separate question from whether it is common. @talucci2019dead and @meigs2011 both frame the beetle to fire sequence as a modification of fuels and therefore of subsequent severity, and @krawchuk2020 place compound disturbance at the centre of the refugia concept. The claim that the agents interact is, in each case, a claim about a product rather than a sum.
+
+The mechanism that would justify the claim is real and measurable. Beetle-killed foliage loses moisture and shifts in chemistry within a year of attack, and the flammability of that foliage rises accordingly [@jenkins2012]. What has proved hard is carrying the mechanism up to the stand and the landscape. @simard2011 modelled crown fire behaviour through a beetle outbreak in lodgepole pine and found the probability of active crown fire no higher, and in the red stage lower, than in unattacked stands. @harvey2014 found the effect on burn severity contingent on outbreak stage rather than uniform, and small beside the effect of weather. @hart2015 found no relationship at all between outbreak extent and area subsequently burned across the western United States. The literature is therefore contested rather than empty, and what novelty there is in asking again rests on the particular landscape and on the treatment of confounding rather than on the question being new.
+
+That contest is partly a contest about inference. Prior disturbance is not assigned at random, both agents track host abundance and terrain, and burn severity is measured on a raster whose cells are anything but independent. The literature on prior disturbance conditioning subsequent severity has taken this seriously: @stevensrumann2016, asking this study's first question with fire in place of beetle across four large fires, fitted a spatially explicit autoregression precisely because burn severity is autocorrelated. The difficulty is that diagnosing dependence is easier than propagating it, and @magnussen2017 show in a different corner of forest science that omitting residual spatial autocorrelation leaves confidence intervals too narrow rather than merely imprecise. An interaction term is exactly the quantity that failure would flatter.
+
+The parent study for this analysis [@murphy2026] modelled conifer regeneration across three four-hectare plots inside the 2015 Mt Midgeley burn, using classified Landsat surfaces for burn severity and for red-stage beetle mortality. Its abstract reports that "areas of overlapping beetle mortality and high burn severity had significantly reduced lodgepole pine regeneration", and its conclusions that the results suggest "the ecological consequences of beetle-fire interactions weaken as surface fuels decay over time". Both are statements about a joint condition: what happens where the two agents coincide, and how that changes with time since attack.
+
+Read against the model, both are inferences from main effects. The fitted trend carries eight covariates, seed source distance, aspect, terrain ruggedness, wind, grey-stage and red-stage beetle mortality, and high and low burn severity, and it carries them additively. No product of a beetle indicator with a fire indicator appears in the pooled fit or in any of the seven per-species fits, and no overlap indicator appears either, though the layers for one were built: rasters intersecting red attack with high and with low burn severity sit in the project directory, entered into no model. A joint-condition claim read off main effects is not wrong, but it is a claim the specification does not separately test, and the gap between the two was noticed at the time without being resolved. This paper closes it.
+
+This study asks the two questions that separation implies.
+
+The first is whether prior beetle mortality is associated with subsequent burn severity in this landscape. The outbreak ran from 2005 to 2014 and the fire burned in 2015, so the causal arrow runs one way only, from beetle to fire, and never the reverse.
+
+The second is whether a beetle by fire product term is supported in a model of regeneration. The test is direct: refit the published point process model with the product term and compare it against the published additive fit. The wording matters and is kept narrow throughout. A designed factorial can license the language of interaction outright, as @bansal2014 do in crossing burn severity with canopy cover and reporting effects that are conditional by construction. An observational fit over ground that neither treatment nor randomisation touched cannot, and the convention in this literature is accordingly more careful: @estabrook2025 describe burn severity as contingent on weather and then fit weather as main effects. This study reports whether the product term is retained and what interval its coefficient carries. It does not report that the two agents interact.
+
+The first question turned out to require a prior question, which is whether the surfaces that would answer it can answer it. @sec-provenance reports that check. It is negative, it is decisive, and it changes the shape of question one before any ecology is attempted.
+
+The second question turned out to require a prior question too, and a less obvious one: not whether the data can support a product term, but whether the likelihood used to fit it can be trusted to say. @sec-interaction reports that the product term is emphatic under the likelihood the parent study fits and absent under inference that accounts for the clustering the parent study itself documents. The coefficients are the same either way. That gap, rather than either question's ecology, is what this paper carries beyond the landscape it was measured in.
+
+# Materials and methods
+
+## Study area {#sec-area}
+
+The Darkwoods Conservation Area lies in the southern Selkirk Mountains of southeastern British Columbia. A mountain pine beetle outbreak affected the property through the decade to 2014, and the Mt Midgeley wildfire burned part of it in 2015, producing a mixed-severity mosaic. The beetle to fire interval across the burned area ranges from one to eleven years with a median of seven [@murphy2026].
+
+## Attack chronology {#sec-dating}
+
+An association between a prior disturbance and a later one is only as good as the dating of the prior one. Studies of this kind normally say so: @kulakowski2006 date a nineteenth-century outbreak from growth releases in surviving non-host trees, @meyer2016 reconstruct pre-attack structure by returning recently dead trees to the live tally, and @estabrook2025 discuss how a forest inventory's remeasurement interval degrades its record of pre-fire condition.
+
+Here the dating instrument is the annual Landsat classification. There are `r length(ANN_ALL)` annual files, and attack in a given cell is the year of the first file that records it. That gives a nominal resolution of one year and a real resolution that is coarser, for three reasons the manuscript can bound but not remove.
+
+```{r}
+#| label: tbl-annual
+#| echo: false
+#| tbl-cap: "The annual classifications that date beetle attack, and the aerial-survey code the grey-stage union is built from. There is no file for the missing year, and the two most recent files carry none of the code at all, so the window that can be dated closes earlier than the file list suggests."
+
+## The claim that the series is two incompatible products is load-bearing for the
+## window used everywhere downstream, so it is derived here rather than asserted.
+## GREY_CODE is the aerial-survey red-attack class the corrected union is the
+## OR of; the deprecated rebuild tested for 1, which is a sparse trace class.
+GREY_CODE <- 44L
+yr_of <- function(f) as.integer(sub(".*?([0-9]{4})\\.tif$", "\\1", f))
+ANN_TAB <- tibble(Year = vapply(ANN_ALL, yr_of, integer(1)),
+                  `Cells carrying the code` =
+                    vapply(ANN_ALL, function(f) sum(vals(rast(f)) == GREY_CODE, na.rm = TRUE),
+                           integer(1))) |>
+  arrange(Year) |>
+  mutate(`In the dating window` = ifelse(`Cells carrying the code` > 0, "yes", ""))
+
+YR_ALL   <- ANN_TAB$Year
+YR_GAP   <- setdiff(seq(min(YR_ALL), max(YR_ALL)), YR_ALL)
+YR_EMPTY <- ANN_TAB$Year[ANN_TAB$`Cells carrying the code` == 0]
+YR_LIVE  <- setdiff(YR_ALL, YR_EMPTY)
+## The load-bearing claim is that no year outside the modelling window contributes
+## to the union, not that every year inside it does. Two years inside it do not,
+## which is reported below rather than asserted away.
+stopifnot(all(YR_LIVE %in% ANN_YEARS))
+show(ANN_TAB, "tbl-annual", "rrl")
+```
+
+Red-attack foliage is detectable for roughly one to three years after the attack that produced it [@wulder2006red], so a first detection dates the crown-colour change rather than the attack, and places it within a window rather than on a year.
+
+The series is also thinner than a count of its files suggests, in three separate ways. `r length(ANN_ALL)` files exist, but there is none for `r paste(YR_GAP, collapse = " or ")`. The two most recent, for `r paste(YR_EMPTY[YR_EMPTY > max(ANN_YEARS)], collapse = " and ")`, carry the aerial-survey code in not one cell, because they are a different product on a different code set and contribute nothing to the union; the window therefore closes at `r max(ANN_YEARS)` rather than at `r max(YR_ALL)`, and an analyst who read the file list as a `r min(YR_ALL)` to `r max(YR_ALL)` series would be wrong. **And two files inside the window, for `r paste(YR_EMPTY[YR_EMPTY <= max(ANN_YEARS)], collapse = " and ")`, are likewise empty of the code.** So the grey-stage union rests on `r length(YR_LIVE)` annual observations spread across a `r max(ANN_YEARS) - min(ANN_YEARS) + 1`-year window, not on `r max(ANN_YEARS) - min(ANN_YEARS) + 1` of them. The assertion above fails the render if any year outside the window ever begins to contribute.
+
+The response used throughout is that union, and it is deliberately undated: it records whether a cell was ever attacked across `r min(ANN_YEARS)` to `r max(ANN_YEARS)`, not when. Given two empty years inside the window and a detection window of one to three years on either side of each observation that is not empty, that is the honest way to use these surfaces.
+
+**Nothing in this study therefore turns on the beetle-to-fire interval**, which these surfaces do not resolve at anything finer than the window itself. The analysis asks whether a cell carried attack before the fire, not how long before.
+
+## Classified surfaces {#sec-local}
+
+```{r}
+#| label: tbl-footprints
+#| echo: false
+#| tbl-cap: "Footprints of the local classified surfaces against the terrain grid. Every disturbance surface is confined to a rectangle of roughly eight square kilometres; the terrain grid covers thirty-four times that area."
+
+G   <- rast(dpath("terrain_environment", "Elevation.utm.tif"))
+red <- rast(dpath("beetle_stages", "Beetle.Outbreak.RedStage.tif"))
+sev  <- rast(dpath("fire_severity",  "Fire.Severity.NDBR.tif"))
+grey <- rast(file.path(GREY_FIX, "rasters", "mpb_grey_corrected.tif"))
+per  <- project(vect(dpath("fire_perimiter", "Fire.Perimiter.shp")), crs(G))
+
+footprint <- function(nm, r) {
+  e <- as.vector(ext(r))
+  w <- e[2] - e[1]; h <- e[4] - e[3]
+  tibble(Surface = nm,
+         Rows = nrow(r), Cols = ncol(r),
+         `Cell (m)` = round(res(r)[1], 2),
+         `Width (km)` = round(w / 1000, 2),
+         `Height (km)` = round(h / 1000, 2),
+         `Extent (km2)` = round(w * h / 1e6, 2))
+}
+
+RES_M <- res(red)[1]
+
+FOOT <- bind_rows(
+  footprint("Elevation, terrain grid", G),
+  footprint("Beetle red stage",        red),
+  footprint("Beetle grey stage, corrected", grey),
+  footprint("Beetle grey stage, deprecated", rast(dpath("beetle_stages", "Beetle.Outbreak.GreyStage.tif"))),
+  footprint("Beetle continuous (spatstat)", rast(dpath("beetle_stages", "MPB.classified.spatstat.tif"))),
+  footprint("Burn severity, classified", sev),
+  footprint("Beetle by fire intersection", rast(dpath("beetle_fire_interactive", "mpbred_firehigh.tif"))))
+
+PERIM_KM2 <- as.numeric(sum(expanse(per, unit = "km")))
+RECT_KM2  <- FOOT$`Extent (km2)`[FOOT$Surface == "Beetle red stage"]
+GRID_KM2  <- FOOT$`Extent (km2)`[FOOT$Surface == "Elevation, terrain grid"]
+
+show(FOOT, "tbl-footprints", "lrrrrrr")
+```
+
+The fire perimeter encloses `r round(PERIM_KM2, 2)` km^2^. The beetle red-stage raster spans a rectangle of `r RECT_KM2` km^2^ around it, so the raster carries roughly `r round(RECT_KM2 - PERIM_KM2, 2)` km^2^ of ground outside the burn on which beetle attack could in principle have been mapped. The terrain grid covers `r round(GRID_KM2, 0)` km^2^ of the same landscape and shows what surrounds the burn.
+
+## Severity class decoding {#sec-decode}
+
+The classified severity raster carries integer codes that are not ordered by severity, and the ordering matters to every table that follows. It is established here from the three binary class masks rather than assumed.
+
+```{r}
+#| label: tbl-decode
+#| echo: false
+#| tbl-cap: "Decoding the classified burn severity raster against its own binary class masks, and against the fire perimeter. The integer codes are not in severity order. Code 16 falls inside the perimeter but in none of the three severity classes."
+
+P <- rasterize(per, sev, background = 0)
+
+sv <- vals(sev); pv <- vals(P)
+
+## Fraction of a code's cells that fall inside the perimeter. Written once and
+## used for both the classification test and the reported percentage.
+inside_frac <- function(k) mean(pv[sv == k] == 1, na.rm = TRUE)
+
+## Keyed by class label, valued by the filename token, so the label comes from
+## the map rather than from a positional fixup the assertion would then be
+## checking against its own input.
+MASK_FILE <- c(High = "High", Moderate = "Med", Low = "Low")
+DEC <- lapply(names(MASK_FILE), function(cl) {
+  hit <- vals(rast(dpath("fire_severity", paste0("Fire.", MASK_FILE[[cl]], ".NDBR.tif")))) == 1
+  tibble(Class = cl, Code = unique(sv[hit]), Cells = sum(hit, na.rm = TRUE))
+}) |> bind_rows()
+
+## the two codes that no class mask claims
+unclaimed <- setdiff(na.omit(unique(sv)), DEC$Code)
+UNC <- tibble(
+  Class = ifelse(sapply(unclaimed, inside_frac) > 0.5,
+                 "Inside perimeter, unclassified", "Outside perimeter"),
+  Code  = unclaimed,
+  Cells = sapply(unclaimed, function(k) sum(sv == k, na.rm = TRUE)))
+
+DECODE <- bind_rows(UNC, DEC) |>
+  mutate(`Inside perimeter (%)` = round(100 * sapply(Code, inside_frac), 1)) |>
+  arrange(match(Class, ROW_ORDER))
+
+## The mapping is load-bearing. Assert it rather than trusting the read.
+stopifnot(DEC$Code[DEC$Class == "High"] == 1,
+          DEC$Code[DEC$Class == "Low"] == 32,
+          DEC$Code[DEC$Class == "Moderate"] == 34)
+CODE_OF <- setNames(DECODE$Code, DECODE$Class)
+
+## Code to label, the inverse of CODE_OF, written once.
+sev_label <- function(v) names(CODE_OF)[match(v, CODE_OF)]
+
+show(DECODE, "tbl-decode", "lrrr")
+```
+
+Code 1 is high severity and code 34 is moderate, so a table built on the numeric order of the codes would report the two most severe classes the wrong way round. Code 16 is the class that no severity mask claims: `r format(DECODE$Cells[DECODE$Class == "Inside perimeter, unclassified"], big.mark = ",")` cells lying inside the fire perimeter but assigned to none of high, moderate or low.
+
+## Independent survey record {#sec-aos}
+
+The provincial Aerial Overview Survey is the operational record of forest health in British Columbia. Observers sketch-map damage annually from fixed-wing aircraft and label each polygon by year, causal agent, severity class and host species [@bcaos2026]. It is coarse, it is observer data, and its errors are positional and perceptual rather than spectral. That last property is what makes it useful here: whatever is wrong with it is uncorrelated with the Landsat classification whose footprint is under test.
+
+```{r}
+#| label: aos
+#| echo: false
+#| output: false
+
+## Read with an extent filter built in BC Albers; the provincial layer is
+## memory-hostile whole. Project after filtering, never before.
+e3005 <- project(as.polygons(ext(G), crs = crs(G)), "EPSG:3005")
+aos   <- vect(AOS_GDB, layer = "pest_infestation_poly", extent = ext(e3005))
+AOS_ALL <- nrow(aos)
+aos   <- aos[aos$PEST_SPECIES_CODE == "IBM" & aos$CAPTURE_YEAR %in% OUTBREAK, ]
+AOS_N <- nrow(aos)
+aos   <- project(aos, crs(G))
+```
+
+Over the terrain grid the survey holds `r format(AOS_ALL, big.mark = ",")` damage polygons of all agents and years, of which `r AOS_N` are mountain pine beetle within the `r min(OUTBREAK)` to `r max(OUTBREAK)` outbreak window used here.
+
+## Spatial coverage {#sec-maps}
+
+Everything the study analyses sits inside one small burn, and the three nested scales below are what that means in practice. The regional panel carries the international border because the provincial survey used as the independent record stops there, and so does any comparison drawn from it.
+
+```{r}
+#| label: fig-location
+#| echo: false
+#| fig-cap: "The study area at three nested scales. (a) Regional setting, with the Canada and United States border and provincial and state boundaries. (b) The terrain grid, the rectangle shared by every disturbance raster, and the fire perimeter inside it. (c) The burn itself with its classified severity and the three four-hectare regeneration plots that carry the point pattern of @sec-interaction. Each panel is drawn to the stated representative fraction at the reproduction width given in the text, carries a true-north arrow, and is bounded by a WGS 84 graticule labelled on all four sides."
+#| fig-width: 10.5
+#| fig-height: 4.6
+
+## A map declares its scale as a ratio. The ratio is chosen first and the panel's
+## ground extent is derived from it, so each panel is drawn to exactly the scale
+## it claims. Deriving the ratio the other way, from whatever extent the data
+## happened to occupy, gives an unroundable number that then gets snapped to a
+## conventional one and is wrong by up to half an order of magnitude.
+IN_M     <- 0.0254
+FIG_W    <- 10.5                     # saved figure size, inches
+FIG_H    <- 4.6
+PANEL_GUESS <- 2.7                   # starting guess only; the real width is measured below
+RF_REG   <- 1e7                      # (a) regional
+RF_AREA  <- 2.5e5                    # (b) study area
+RF_BURN  <- 1e5                      # (c) the burn
+rf_txt   <- function(rf) paste0("1:", formatC(rf, format = "d", big.mark = " "))
+crs_txt  <- function(rf, epsg, nm) paste0(rf_txt(rf), "   ·   ", nm, " (EPSG:", epsg, ")")
+
+## Extent centred on x that renders at exactly `rf`.
+box_at <- function(x, rf, panel_in, aspect = 0.86) {
+  b <- st_bbox(x)
+  ## [[ ]] drops the bbox names. Keeping them makes c(xmin = ...) build a name
+  ## like "xmin.xmin", the lookup in lims() then returns NA, and coord_sf falls
+  ## back to the data extent without complaining while the subtitle goes on
+  ## claiming the requested scale. This was caught by the assertion below.
+  cx <- (b[["xmin"]] + b[["xmax"]]) / 2
+  cy <- (b[["ymin"]] + b[["ymax"]]) / 2
+  hw <- rf * panel_in * IN_M / 2
+  out <- c(xmin = cx - hw, xmax = cx + hw, ymin = cy - hw * aspect, ymax = cy + hw * aspect)
+  stopifnot(all(is.finite(out)),
+            isTRUE(all.equal(unname(out[["xmax"]] - out[["xmin"]]), rf * panel_in * IN_M)))
+  out
+}
+lims   <- function(b) list(x = c(b[["xmin"]], b[["xmax"]]), y = c(b[["ymin"]], b[["ymax"]]))
+ext_sf <- function(r) {
+  e <- as.vector(ext(r))
+  st_as_sfc(st_bbox(c(xmin = e[["xmin"]], xmax = e[["xmax"]],
+                      ymin = e[["ymin"]], ymax = e[["ymax"]]), crs = st_crs(crs(r))))
+}
+
+## The three regeneration plots, read once here and reused by sec-interaction.
+PLOT_SF <- do.call(rbind, lapply(1:3, function(i)
+  st_transform(st_read(dpath(sprintf("plot_locations/Plot%d.shp", i)), quiet = TRUE)["geometry"],
+               st_crs(G))))
+
+## Natural Earth ships its own data, so this is a local read rather than a
+## network call, and the render stays self-contained.
+NE_COUNTRY <- ne_countries(scale = "large", returnclass = "sf",
+                           country = c("Canada", "United States of America"))
+NE_STATE   <- ne_states(returnclass = "sf",
+                        country = c("Canada", "United States of America"))
+
+MAP_THEME <- theme(
+  panel.background = element_rect(fill = "white", colour = NA),
+  panel.border = element_rect(fill = NA, colour = "grey20", linewidth = 0.5),
+  panel.grid.major = element_line(colour = "grey82", linewidth = 0.2),
+  axis.title = element_blank(), axis.text = element_text(size = 5.6),
+  plot.title = element_text(face = "bold", size = 9),
+  plot.subtitle = element_text(size = 6.2, colour = "grey30"),
+  legend.position = "bottom", legend.box = "horizontal",
+  legend.title = element_text(size = 6.2), legend.text = element_text(size = 6),
+  legend.key.size = unit(8, "pt"), legend.margin = margin(t = 0))
+
+## True north, not grid north. At this longitude inside zone 11N they differ by
+## under a degree, but the distinction is free to state correctly.
+NORTH <- annotation_north_arrow(
+  location = "tr", which_north = "true",
+  height = unit(0.8, "cm"), width = unit(0.6, "cm"),
+  pad_x = unit(0.1, "cm"), pad_y = unit(0.1, "cm"),
+  style = north_arrow_orienteering(text_size = 5.5))
+
+ALBERS <- "EPSG:3005"
+SITE   <- st_geometry(st_centroid(st_union(st_transform(st_as_sf(per), ALBERS))))
+
+## The scale a map claims is its ground width over its *drawn* width, and a
+## panel is not drawn at its share of the figure: axis text, titles and legends
+## take fixed space first, and coord_sf then locks the panel's aspect, which can
+## shrink it further. Assuming the drawn width is how a map comes to carry a
+## ratio it is not drawn at. It is computed from the gtable instead, the same way
+## gtable resolves the layout, and the extents are rebuilt at the measured value.
+panel_in_of <- function(p, fig_w, fig_h) {
+  g  <- if (inherits(p, "gtable")) p else patchwork::patchworkGrob(p)
+  wt <- grid::unitType(g$widths); ht <- grid::unitType(g$heights)
+  fw <- sum(grid::convertWidth(g$widths[wt != "null"],   "in", valueOnly = TRUE))
+  fh <- sum(grid::convertHeight(g$heights[ht != "null"], "in", valueOnly = TRUE))
+  nw <- as.numeric(g$widths[wt == "null"]); nh <- as.numeric(g$heights[ht == "null"])
+  aw <- fig_w - fw; ah <- fig_h - fh
+  ## respect locks one null width unit to one null height unit in physical size,
+  ## so the panel block is the largest box of that shape that fits.
+  if (!is.null(g$respect) && !identical(g$respect, FALSE))
+    aw <- sum(nw) * min(aw / sum(nw), ah / sum(nh))
+  aw / length(nw)
+}
+
+## The study-area panel's own footprint, drawn on the regional panel.
+build_maps <- function(panel_in) {
+
+B_REG  <- box_at(SITE, RF_REG,  panel_in)
+B_AREA <- box_at(ext_sf(red), RF_AREA, panel_in)
+B_BURN <- box_at(st_geometry(st_as_sf(per)), RF_BURN, panel_in)
+
+AREA_ON_REG <- st_transform(
+  st_as_sfc(st_bbox(c(xmin = B_AREA[["xmin"]], xmax = B_AREA[["xmax"]],
+                      ymin = B_AREA[["ymin"]], ymax = B_AREA[["ymax"]]),
+                    crs = st_crs(G))), ALBERS)
+at_frac <- function(b, fx, fy) c(b[["xmin"]] + fx * (b[["xmax"]] - b[["xmin"]]),
+                                 b[["ymin"]] + fy * (b[["ymax"]] - b[["ymin"]]))
+lab_ca <- at_frac(B_REG, 0.05, 0.93); lab_us <- at_frac(B_REG, 0.05, 0.10)
+
+p_reg <- ggplot() +
+  geom_sf(data = st_transform(NE_COUNTRY, ALBERS), fill = "grey95", colour = NA) +
+  geom_sf(data = st_transform(NE_STATE, ALBERS), fill = NA, colour = "grey75", linewidth = 0.2) +
+  geom_sf(data = st_transform(NE_COUNTRY, ALBERS), fill = NA, colour = "grey15", linewidth = 0.6) +
+  geom_sf(data = AREA_ON_REG, fill = NA, colour = "#b2182b", linewidth = 0.6) +
+  annotate("text", x = lab_ca[1], y = lab_ca[2], label = "CANADA", hjust = 0,
+           size = 2.4, colour = "grey25", fontface = "bold") +
+  annotate("text", x = lab_us[1], y = lab_us[2], label = "UNITED STATES", hjust = 0,
+           size = 2.4, colour = "grey25", fontface = "bold") +
+  coord_sf(xlim = lims(B_REG)$x, ylim = lims(B_REG)$y, datum = st_crs(4326),
+           expand = FALSE, label_axes = "ENEN") +
+  NORTH +
+  labs(title = "(a) Regional setting",
+       subtitle = crs_txt(RF_REG, 3005, "BC Albers")) +
+  MAP_THEME
+
+ELEV <- G; ELEV[ELEV < 0] <- NA
+FOOT_SF <- rbind(
+  st_sf(Layer = "Terrain grid",        geometry = ext_sf(G)),
+  st_sf(Layer = "Disturbance rasters", geometry = ext_sf(red)),
+  st_sf(Layer = "Fire perimeter",      geometry = st_geometry(st_as_sf(per))))
+FOOT_SF$Layer <- factor(FOOT_SF$Layer, levels = c("Terrain grid", "Disturbance rasters",
+                                                  "Fire perimeter"))
+
+p_area <- ggplot() +
+  geom_spatraster(data = ELEV) +
+  scale_fill_gradientn(colours = terrain.colors(64, rev = TRUE), na.value = "white",
+                       name = "Elevation (m)", breaks = c(1000, 1500, 2000, 2500),
+                       guide = guide_colourbar(barwidth = unit(52, "pt"),
+                                               barheight = unit(4.5, "pt"),
+                                               title.position = "top", order = 1)) +
+  geom_sf(data = FOOT_SF, aes(colour = Layer, linewidth = Layer, linetype = Layer), fill = NA) +
+  scale_colour_manual(values = c("Terrain grid" = "grey30",
+                                 "Disturbance rasters" = "#7b3294",
+                                 "Fire perimeter" = "#b2182b"), name = NULL) +
+  ## linewidth and linetype key off the same factor as colour, so their guides
+  ## would repeat the same three rows. Suppress them and carry both into the
+  ## colour key.
+  scale_linewidth_manual(values = c(0.35, 0.55, 0.7), guide = "none") +
+  scale_linetype_manual(values = c("22", "solid", "solid"), guide = "none") +
+  coord_sf(xlim = lims(B_AREA)$x, ylim = lims(B_AREA)$y, datum = st_crs(4326),
+           expand = FALSE, label_axes = "ENEN") +
+  NORTH +
+  guides(colour = guide_legend(order = 2,
+    override.aes = list(fill = NA, linewidth = c(0.35, 0.55, 0.7),
+                        linetype = c("22", "solid", "solid")))) +
+  labs(title = "(b) Study area and dataset footprints",
+       subtitle = crs_txt(RF_AREA, 32611, "UTM zone 11N")) +
+  MAP_THEME
+
+SEV_MAP <- sev
+values(SEV_MAP) <- factor(sev_label(vals(sev)), levels = SEV_LEVELS)
+
+p_burn <- ggplot() +
+  geom_spatraster(data = SEV_MAP) +
+  scale_fill_manual(values = setNames(c("#fddbc7", "#ef8a62", "#67001f"), SEV_LEVELS),
+                    na.value = "white", na.translate = FALSE, name = "Burn severity",
+                    guide = guide_legend(order = 1, nrow = 1)) +
+  geom_sf(data = st_as_sf(per), fill = NA, colour = "grey15", linewidth = 0.5) +
+  geom_sf(data = PLOT_SF, aes(colour = "Regeneration plots"), fill = NA, linewidth = 0.6) +
+  scale_colour_manual(values = c("Regeneration plots" = "#1a9850"), name = NULL,
+                      guide = guide_legend(order = 2, override.aes = list(fill = NA))) +
+  coord_sf(xlim = lims(B_BURN)$x, ylim = lims(B_BURN)$y, datum = st_crs(4326),
+           expand = FALSE, label_axes = "ENEN") +
+  NORTH +
+  labs(title = "(c) The burn and the plots",
+       subtitle = crs_txt(RF_BURN, 32611, "UTM zone 11N")) +
+  MAP_THEME
+
+  p_reg + p_area + p_burn
+}
+
+## Two passes. Build at the guess, measure what was drawn, rebuild at the
+## measurement. One pass converges because changing an extent by a per cent or
+## two does not change the width of the axis labels, and the assertion below is
+## what actually enforces that rather than the claim that it does.
+PANEL_IN <- panel_in_of(build_maps(PANEL_GUESS), FIG_W, FIG_H)
+FIG_LOC  <- build_maps(PANEL_IN)
+PANEL_CHECK <- panel_in_of(FIG_LOC, FIG_W, FIG_H)
+stopifnot(abs(PANEL_CHECK / PANEL_IN - 1) < 0.005)
+
+LOC_PATH <- file.path("..", "03.outputs", "PNG", "fig-location.png")
+ggsave(LOC_PATH, FIG_LOC, width = FIG_W, height = FIG_H, dpi = 300, bg = "white")
+knitr::include_graphics(LOC_PATH)
+```
+
+The scales are `r rf_txt(RF_REG)`, `r rf_txt(RF_AREA)` and `r rf_txt(RF_BURN)`, each exact at a panel `r sprintf("%.2f", PANEL_IN)` inches wide. That width is measured off the assembled figure rather than assumed, and the extents are then rebuilt at it, so the ratios printed on the panels are the ratios the panels are drawn to and not the ratios they were asked for. Reproduced at any other width the ratios change in proportion, which is the ordinary caveat on a printed representative fraction and the reason the panel width is stated rather than left to be inferred. Panels (b) and (c) are in the UTM zone 11N grid the analysis works in; panel (a) is in BC Albers, an equal-area projection appropriate to the province. All three are bounded by a WGS 84 graticule.
+
+Panel (b) is the whole of the provenance problem in one frame: the terrain grid covers `r round(GRID_KM2, 0)` km^2^, every disturbance raster shares a footprint of `r RECT_KM2` km^2^, and the fire perimeter inside it encloses `r round(PERIM_KM2, 2)` km^2^. Terrain is mapped across the landscape and disturbance only in a rectangle drawn around the fire. @sec-provenance shows that the beetle surfaces stop tighter still.
+
+# Surface provenance {#sec-provenance}
+
+The scoping for this study reported a contingency table in which beetle red attack rose from near zero in unburned forest to roughly a fifth of cells at moderate burn severity. Taken at face value that is a strong compound-disturbance signal. It is also exactly the pattern a clipped raster would manufacture, and the clip is the first thing to rule out.
+
+## Perimeter clipping {#sec-perimeter}
+
+```{r}
+#| label: tbl-perimeter
+#| echo: false
+#| tbl-cap: "Where each beetle surface stops, against the fire perimeter, on the native beetle grid. The annual rasters carry nodata over almost the whole area outside the perimeter, and the two derived surfaces inherit it."
+
+Pr <- rasterize(per, red, background = 0)
+INPER <- vals(Pr) == 1
+CELLS_OUT <- sum(!INPER)
+
+## What counts as attack on each surface, named once. Written out fifteen times
+## between them before this existed, which is fifteen places to edit if the grey
+## encoding ever gains a second nonzero code.
+GREY_HIT <- vals(grey) > 0
+RED_HIT  <- vals(red) == 1
+N_RED    <- sum(RED_HIT)
+
+## A cell is observed if any annual raster in the outbreak window carries data
+## there. -128 and 128 are the nodata sentinels these files use alongside NA.
+is_obs <- function(f) { v <- vals(rast(f)); !(is.na(v) | v == -128 | v == 128) }
+OBS <- Reduce(`|`, lapply(ANN, is_obs))
+
+stop_at <- function(nm, present, note) {
+  tibble(Surface = nm,
+         `Cells present` = sum(present),
+         `Inside perimeter` = sum(present & INPER),
+         `Outside perimeter` = sum(present & !INPER),
+         Note = note)
+}
+
+STOPS <- bind_rows(
+  stop_at("Annual rasters, any data", OBS, "nodata over the rest"),
+  stop_at("Corrected grey stage, 2005 to 2011", GREY_HIT, "union of code 44"),
+  stop_at("Red stage, as published", RED_HIT, "substituted for a missing layer"))
+
+## The claim below is that every annual file carries the same nodata footprint,
+## so it is counted here rather than recalled.
+ND_COUNTS <- vapply(ANN_ALL, function(f) sum(!is_obs(f)), integer(1))
+ND_OUT    <- vapply(ANN_ALL, function(f) sum(!is_obs(f) & !INPER), integer(1))
+## The prose says every annual file carries the same nodata count. Assert it.
+stopifnot(length(unique(ND_COUNTS)) == 1L)
+
+OBS_OUT   <- sum(OBS & !INPER)
+GREY_OUT  <- sum(GREY_HIT & !INPER)
+RED_OUT   <- sum(RED_HIT & !INPER)
+PCT_OBS_OUT <- 100 * OBS_OUT / CELLS_OUT
+
+show(STOPS, "tbl-perimeter", "lrrrl")
+```
+
+The annual rasters carry data on `r round(PCT_OBS_OUT, 1)` per cent of the `r format(CELLS_OUT, big.mark = ",")` cells lying outside the fire perimeter, and nodata on the rest. Every beetle surface in the study descends from those files, so every one of them inherits the boundary: the corrected grey union places `r GREY_OUT` of its `r sum(GREY_HIT)` cells outside the perimeter and the published red-stage surface places `r RED_OUT` of its `r N_RED`.
+
+**The clip is in the source data, not in any downstream step.** All `r length(ANN_ALL)` annual files carry an identical nodata count of `r format(ND_COUNTS[1], big.mark = ",")` cells, `r format(ND_OUT[1], big.mark = ",")` of which lie outside the perimeter, and the boundary it traces is the fire perimeter, which is a shape no property of beetle ecology would produce. Whoever prepared the time series clipped it to the burn before the classification that used it was ever run.
+
+## Nested masks {#sec-nested}
+
+The red and grey surfaces do not stop in the same place, and the difference matters.
+
+```{r}
+#| label: tbl-nested
+#| echo: false
+#| tbl-cap: "The two surfaces against the classified severity footprint. Grey attack is recorded throughout the perimeter; red attack is confined to the three classified severity classes and is absent from the cells inside the perimeter that no class mask claims."
+
+SEV <- resample(sev, red, method = "near")
+CLASSIFIED <- vals(SEV) %in% CODE_OF[SEV_LEVELS]
+
+## The three regions are not nested: 22 cells carry a classified severity code
+## and fall outside the rasterised perimeter, so these masks are kept as written
+## rather than derived from one another by grouping.
+REGION <- list(`Outside the fire perimeter`               = !INPER,
+               `Inside perimeter, unclassified severity`  = INPER & !CLASSIFIED,
+               `Inside the classified severity footprint` = CLASSIFIED)
+pct_by_region <- function(v) round(100 * vapply(REGION, function(m) mean(v[m]), numeric(1)), 1)
+
+NEST <- tibble(Region = names(REGION),
+               Cells = vapply(REGION, sum, integer(1)),
+               `Annual data (%)` = pct_by_region(OBS),
+               `Grey attack (%)` = pct_by_region(GREY_HIT),
+               `Red attack (%)`  = pct_by_region(RED_HIT))
+
+show(NEST, "tbl-nested", "lrrrr")
+```
+
+Inside the perimeter but outside the classified severity footprint, the annual rasters are `r NEST$"Annual data (%)"[2]` per cent observed and the corrected grey union records attack in `r NEST$"Grey attack (%)"[2]` per cent of cells. The published red-stage surface records it in `r NEST$"Red attack (%)"[2]` per cent. That contrast cannot be ecological: the same ground, in the same years, is either a third attacked or not attacked at all depending on which derivative of the same annual files is consulted.
+
+So there are two clips, one inside the other. The annual series is clipped to the fire perimeter, and `Beetle.Outbreak.RedStage.tif` is confined more tightly still, to the ground where burn severity was classified. The narrower one is an accident of substitution rather than a decision: the layer the published analysis intended to use, `mpb_red_na.tif`, is missing from the repository, and `Beetle.Outbreak.RedStage.tif` was put in its place [@murphy2026greyfix].
+
+## Independent corroboration {#sec-crosscheck}
+
+If the zeroes are ecological, the provincial survey should also find little beetle attack outside the burn. If they are clipping, the survey should find as much there as anywhere. The small sliver of annual data that does extend beyond the perimeter provides a second, internal check on the same question.
+
+```{r}
+#| label: tbl-crosscheck
+#| echo: false
+#| tbl-cap: "The two local surfaces against the independent Aerial Overview Survey, by burn severity class. Local rates are computed only over cells the annual rasters actually observe. The survey finds no shortage of beetle attack outside the burn, and neither does the small observed sliver of the local data."
+
+A  <- rasterize(aos, red, background = 0)
+EL <- resample(G, red)
+
+## Class on the perimeter first, then on severity within it. Keying this table on
+## the severity code alone would put 67 in-perimeter cells that the severity
+## raster codes 0 into the "outside" row and inflate what little the local data
+## says out there by a factor of seven.
+CC <- tibble(sev = vals(SEV), grey = GREY_HIT, red = RED_HIT, aos = vals(A) == 1,
+             elev = vals(EL), obs = OBS, inper = INPER) |>
+  mutate(Class = ifelse(!inper, OUTSIDE,
+                 ifelse(sev %in% CODE_OF[SEV_LEVELS], sev_label(sev), UNCLASSED))) |>
+  group_by(Class) |>
+  summarise(Cells = n(),
+            `Observed (%)` = round(100 * mean(obs), 1),
+            Observed = sum(obs),
+            `Grey (%)` = round(100 * mean(grey[obs]), 1),
+            `Red (%)`  = round(100 * mean(red[obs]), 1),
+            `Survey (%)` = round(100 * mean(aos), 1),
+            `Elevation (m)` = round(mean(elev, na.rm = TRUE)),
+            .groups = "drop") |>
+  arrange(match(Class, ROW_ORDER))
+
+OUTROW <- CC |> filter(Class == OUTSIDE)
+BURNED <- CC |> filter(Class %in% SEV_LEVELS)
+
+show(CC, "tbl-crosscheck", "lrrrrrrr") |>
+  row_spec(which(CC$Class == OUTSIDE), background = "#f7e7e7")
+```
+
+The shaded row carries the argument. Outside the fire perimeter the survey records `r sprintf("%.1f", OUTROW$"Survey (%)")` per cent of the ground as attacked, a rate no lower than anything inside the burn and higher than two of the three burned classes. The local surfaces report nothing there at all, and they report nothing because they see nothing: of `r format(OUTROW$Cells, big.mark = ",")` cells outside the perimeter the annual rasters observe `r OUTROW$Observed`.
+
+That figure is worth stating plainly rather than converting to a rate. The local record is not sparse outside the burn, it is very nearly absent, and `r OUTROW$Observed` cells cannot corroborate or contradict anything. The comparison therefore rests on the survey alone, which is sufficient: an independent census of the same ground in the same years finds beetle attack there in ordinary abundance. The zero the published red-stage surface reports outside the burn is a statement about the extent of the file, not about the forest.
+
+```{r}
+#| label: fig-mask
+#| echo: false
+#| fig-cap: "The clip, mapped, at 1:50 000 in UTM zone 11N (EPSG:32611) with a WGS 84 graticule labelled on all four sides. Top left, the published red-stage surface, which stops at the classified burn. Top right, the corrected grey-stage union, which reaches the fire perimeter and stops there. Bottom left, the burn severity classes. Bottom right, the independent Aerial Overview Survey, which does not stop at anything. The unburned ground in the two upper panels is empty because it was never observed, not because it was never attacked."
+#| fig-width: 9
+#| fig-height: 9.6
+
+perim_sf <- st_as_sf(per)
+
+## These four panels are one map product at one scale, so the extent is derived
+## from the ratio exactly as in fig-location. The aspect is portrait because the
+## burn is, and because the 2 x 2 layout gives each panel a tall box.
+RF_MASK     <- 5e4
+MASK_W      <- 9; MASK_H <- 9.6      # saved figure size, inches
+MASK_GUESS  <- 3.6                   # starting guess; the drawn width is measured below
+
+## Relabel each surface from its raw codes so the legends carry meaning rather
+## than integers. Cells shown white are outside the fire perimeter entirely.
+relabel <- function(r, from, to) {
+  out <- r
+  values(out) <- factor(to[match(vals(r), from)], levels = to)
+  out
+}
+panel <- function(r, title, pal, B) {
+  ggplot() +
+    geom_spatraster(data = r) +
+    geom_sf(data = perim_sf, fill = NA, colour = "grey15", linewidth = 0.4) +
+    scale_fill_manual(values = pal, na.value = "white", name = NULL,
+                      na.translate = FALSE, drop = FALSE) +
+    guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
+    labs(title = title) +
+    ## Same graticule furniture as fig-location: WGS 84 datum, coordinates on
+    ## all four sides, true north, and an extent derived from the scale so the
+    ## ratio in the caption is the ratio drawn. The four panels share one extent
+    ## and one projection, so scale and CRS are stated once in the caption
+    ## rather than repeated on each of the four.
+    ## Breaks are set explicitly because these panels are narrow and portrait;
+    ## the default breaks put six longitude labels along a 4 km axis and they
+    ## overprint each other.
+    scale_x_continuous(breaks = seq(-117, -116, by = 0.02)) +
+    scale_y_continuous(breaks = seq(49, 49.4, by = 0.01)) +
+    coord_sf(xlim = lims(B)$x, ylim = lims(B)$y, expand = FALSE,
+             datum = st_crs(4326), label_axes = "ENEN") +
+    annotation_north_arrow(location = "tr", which_north = "true",
+                           height = unit(0.7, "cm"), width = unit(0.52, "cm"),
+                           pad_x = unit(0.08, "cm"), pad_y = unit(0.08, "cm"),
+                           style = north_arrow_orienteering(text_size = 5)) +
+    theme(axis.text = element_text(size = 5.2), axis.title = element_blank(),
+          panel.border = element_rect(fill = NA, colour = "grey20", linewidth = 0.4),
+          panel.grid.major = element_line(colour = "grey85", linewidth = 0.18),
+          plot.title = element_text(face = "bold", size = 9, hjust = 0.5),
+          legend.position = "bottom", legend.key.size = unit(9, "pt"),
+          legend.text = element_text(size = 7),
+          legend.margin = margin(t = 2, b = 0))
+}
+
+## relabel() maps anything outside `from` to NA, and the outside-perimeter code
+## is not in SEV_ORDER, so those cells already render as na.value white. Masking
+## them by hand first was doing the same work twice.
+SEV_ORDER <- c(UNCLASSED, SEV_LEVELS)
+sev_lab <- relabel(SEV, CODE_OF[SEV_ORDER], SEV_ORDER)
+
+## Unobserved cells are shown as a class of their own rather than as absence.
+beetle_panel <- function(r, title, col, B) {
+  x <- r
+  values(x) <- factor(ifelse(!OBS, "Not observed",
+                      ifelse(vals(r) > 0, "Attack", "No attack")),
+                      levels = c("Not observed", "No attack", "Attack"))
+  panel(x, title, c(`Not observed` = "white", `No attack` = "grey88", Attack = col), B)
+}
+
+## Same two-pass as fig-location: the ratio in the caption is ground width over
+## drawn width, so the drawn width is measured and the extent rebuilt at it.
+build_mask <- function(panel_in) {
+  B <- box_at(st_geometry(perim_sf), RF_MASK, panel_in, aspect = 1.15)
+  p1 <- beetle_panel(red,  "Red stage, as published", "#b2182b", B)
+  p2 <- beetle_panel(grey, "Grey stage, corrected 2026-06-02", "#7b3294", B)
+  p3 <- panel(sev_lab, "Burn severity classes",
+              setNames(c("grey70", "#fddbc7", "#ef8a62", "#67001f"), SEV_ORDER), B)
+  p4 <- panel(relabel(A, c(0, 1), c("Not attacked", "Beetle attack")),
+              "Aerial Overview Survey, beetle",
+              c(`Not attacked` = "grey88", `Beetle attack` = "#2166ac"), B)
+  (p1 + p2) / (p3 + p4)
+}
+PANEL_MASK <- panel_in_of(build_mask(MASK_GUESS), MASK_W, MASK_H)
+
+## Rendered once. Printing FIG_MASK as well would draw the same four panels a
+## second time on knitr's device; the chunk's fig-width, fig-height and dpi
+## already match these arguments, so the embedded image is identical.
+FIG_MASK <- build_mask(PANEL_MASK)
+stopifnot(abs(panel_in_of(FIG_MASK, MASK_W, MASK_H) / PANEL_MASK - 1) < 0.005)
+FIG_PATH <- file.path("..", "03.outputs", "PNG", "fig-mask.png")
+ggsave(FIG_PATH, FIG_MASK, width = MASK_W, height = MASK_H, dpi = 300)
+knitr::include_graphics(FIG_PATH)
+```
+
+## Analytical consequences {#sec-survives}
+
+The clip destroys any comparison that crosses the fire perimeter and leaves untouched any comparison made entirely inside it. The three severity classes all sit within the perimeter and are observed at better than `r floor(min(BURNED$"Observed (%)"))` per cent, so the clip cannot generate differences among them.
+
+```{r}
+#| label: fig-gradient
+#| echo: false
+#| fig-cap: "Beetle attack across burn severity within the fire perimeter, in the two local surfaces and in the independent survey. The three records share no common measurement pathway and all three peak at moderate severity. Point labels give the number of cells in each class."
+#| fig-width: 6.2
+#| fig-height: 3.4
+
+WB <- BURNED |>
+  select(Class, Cells, `Grey (%)`, `Red (%)`, `Survey (%)`, `Elevation (m)`) |>
+  arrange(match(Class, SEV_LEVELS))
+shape <- function(col) paste(sprintf("%.1f", WB[[col]]), collapse = ", ")
+RECORDS <- c(`Grey (%)` = "Grey stage, corrected",
+             `Red (%)`  = "Red stage, as published",
+             `Survey (%)` = "Aerial Overview Survey")
+PEAKS <- vapply(names(RECORDS), function(k) WB$Class[which.max(WB[[k]])], character(1))
+stopifnot(length(unique(PEAKS)) == 1L)
+invisible(keep(WB, "fig-gradient"))
+
+GRAD <- WB |>
+  select(Class, Cells, all_of(names(RECORDS))) |>
+  tidyr::pivot_longer(all_of(names(RECORDS)), names_to = "Record", values_to = "Attacked") |>
+  mutate(Record = factor(RECORDS[Record], levels = unname(RECORDS)),
+         Class  = factor(Class, levels = SEV_LEVELS))
+
+FIG_GRAD <- ggplot(GRAD, aes(Class, Attacked, colour = Record, group = Record)) +
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 2.1) +
+  scale_colour_manual(values = c("#7b3294", "#b2182b", "#2166ac"), name = NULL) +
+  scale_y_continuous(limits = c(0, NA), expand = expansion(mult = c(0, 0.12))) +
+  labs(x = "Burn severity class", y = "Cells recorded as attacked (%)") +
+  theme(legend.position = "bottom", panel.grid.major.x = element_blank())
+GRAD_PATH <- file.path("..", "03.outputs", "PNG", "fig-gradient.png")
+ggsave(GRAD_PATH, FIG_GRAD, width = 6.2, height = 3.4, dpi = 300, bg = "white")
+knitr::include_graphics(GRAD_PATH)
+```
+
+```{r}
+#| label: tbl-withinburn
+#| echo: false
+#| tbl-cap: "The same three records as counts and rates, with the cells and the mean elevation of each class. The figure carries the shape; this table carries the numbers the elevation argument below rests on."
+
+show(WB, "tbl-withinburn", "lrrrrr")
+```
+
+Three records agree on the shape. As @tbl-withinburn sets out, the corrected grey union runs `r shape("Grey (%)")` per cent across low, moderate and high severity, the published red-stage surface `r shape("Red (%)")`, and the independent survey `r shape("Survey (%)")`. All three peak at `r tolower(unique(PEAKS))` and fall at high, and the assertion above fails the render if they ever stop agreeing. The two local surfaces share a measurement pathway with each other but not with the survey, so the agreement is not one instrument repeating itself.
+
+That agreement is not yet evidence about fire. The elevation column is the reason. Moderate severity occupies the highest mean elevation of the three burned classes at `r WB$"Elevation (m)"[WB$Class == "Moderate"]` m, and the companion refugia analysis of this landscape finds beetle attack peaking near 1,430 m for reasons that have nothing to do with fire [@murphy2026refugia]. A severity gradient that is also an elevation gradient will reproduce the beetle elevation optimum whether or not severity matters. Conditioning on host abundance and on elevation is therefore the first task of the next phase, not a robustness check appended to it.
+
+# Gradient conditioning {#sec-conditioning}
+
+Three records agreeing that attack peaks at moderate severity is not yet evidence that severity is doing the work. Both agents track host abundance and topography, and lodgepole-rich, mid-elevation stands are both more attackable and more burnable, so an apparent association between them may be host distribution seen twice. This section conditions on both.
+
+## Analysis frame {#sec-frame}
+
+```{r}
+#| label: frame
+#| echo: false
+#| output: false
+
+## Host comes from the provincial inventory, shared with the companion refugia
+## study; see 02.inputs/vri/README.md. Lodgepole cover is summed across the three
+## species slots because a polygon can carry it in any of them.
+vri <- project(vect(VRI_PATH), crs(red))
+pl_pct <- function(cd, pct) ifelse(!is.na(cd) & grepl("^PL", cd),
+                                   ifelse(is.na(pct), 0, pct), 0)
+vri$PL_PCT <- pl_pct(vri$SPECIES_CD_1, vri$SPECIES_PCT_1) +
+              pl_pct(vri$SPECIES_CD_2, vri$SPECIES_PCT_2) +
+              pl_pct(vri$SPECIES_CD_3, vri$SPECIES_PCT_3)
+
+## The frame is every observed cell inside the fire perimeter. The response is the
+## corrected grey union, which is the denser of the two local surfaces and the
+## only one observed throughout the perimeter.
+RC <- rowColFromCell(red, seq_len(ncell(red)))
+
+FR <- tibble(y    = as.integer(GREY_HIT),
+             sev  = sev_label(vals(SEV)),
+             elev = vals(EL),
+             pl   = vals(rasterize(vri, red, field = "PL_PCT")),
+             row  = RC[, 1],
+             col  = RC[, 2]) |>
+  filter(INPER, OBS, !is.na(elev), !is.na(pl)) |>
+  mutate(sev  = factor(ifelse(sev == UNCLASSED, "Unclassified", sev),
+                       levels = c(SEV_LEVELS, "Unclassified")),
+         host = as.integer(pl > 0),
+         ec   = (elev - 1400) / 100) |>       # elevation in 100 m, centred
+  ## A handful of cells inside the perimeter carry the outside-perimeter severity
+  ## code and fall outside the four levels above. Dropping them here is what keeps
+  ## model.matrix and the response the same length; without it model.matrix
+  ## silently drops the rows and every bootstrap index is off by that many.
+  ## This is the only NA filter on sev: an NA present before the mutate stays NA
+  ## through it, so filtering earlier as well would be the same rows twice.
+  filter(!is.na(sev))
+
+stopifnot(!anyNA(FR$sev), !anyNA(FR$y), !anyNA(FR$elev), !anyNA(FR$pl),
+          nrow(model.matrix(F_ADJ, FR)) == nrow(FR),
+          nrow(model.matrix(F_QUAD, FR)) == nrow(FR))
+
+N_FR <- nrow(FR); N_HIT <- sum(FR$y)
+```
+
+The frame is `r format(N_FR, big.mark = ",")` cells, of which `r format(N_HIT, big.mark = ",")` carry grey-stage attack. Lodgepole is present on `r round(100 * mean(FR$host))` per cent of them.
+
+## Covariate collinearity {#sec-collinear}
+
+```{r}
+#| label: tbl-host
+#| echo: false
+#| tbl-cap: "Attack, host cover and elevation by burn severity class, and the crude contrast between stands carrying lodgepole and stands without it."
+
+## One summarise body, two stratifications. The columns differed in nothing.
+strat <- function(g) FR |> group_by(Stratum = g) |>
+  summarise(Cells = n(), `Attacked (%)` = round(100 * mean(y), 1),
+            `Lodgepole (%)` = round(mean(pl), 1),
+            `Elevation (m)` = round(mean(elev)), .groups = "drop")
+
+HOST <- bind_rows(strat(paste0(as.character(FR$sev), " severity")),
+                  strat(ifelse(FR$host == 1, "Lodgepole present", "Lodgepole absent")))
+
+## Two correlations, and only the second is the model's. The continuous lodgepole
+## percentage is what the inventory records; the binary host indicator is what
+## F_ADJ actually fits. Reporting the first as though it were the regressor's
+## collinearity was an error in an earlier draft of this section.
+R_PL_EL   <- cor(FR$pl, FR$elev)
+R_HOST_EL <- cor(FR$host, FR$elev)
+## With two continuous predictors the variance inflation factor is 1/(1 - r^2).
+VIF_HOST  <- 1 / (1 - R_HOST_EL^2)
+
+## The effective sample size, which is what actually binds here. Computed from
+## the same 500 m grid the bootstrap of sec-blocks resamples, but written out
+## here because that section is downstream of this one and blocks_of() with it.
+K_500 <- length(unique(paste(FR$row %/% round(BLOCK_M / RES_M),
+                             FR$col %/% round(BLOCK_M / RES_M))))
+
+H_PRES <- HOST$`Attacked (%)`[HOST$Stratum == "Lodgepole present"]
+H_ABS  <- HOST$`Attacked (%)`[HOST$Stratum == "Lodgepole absent"]
+
+## The two frames are built by different paths; assert they still agree on the
+## quantity both report, so a divergence cannot become silent.
+stopifnot(isTRUE(all.equal(
+  WB$`Grey (%)`,
+  HOST$`Attacked (%)`[match(paste0(SEV_LEVELS, " severity"), HOST$Stratum)])))
+
+show(HOST, "tbl-host", "lrrrr") |>
+  pack_rows("By burn severity", 1, 4) |> pack_rows("By host presence", 5, 6)
+```
+
+The crude host contrast is large: `r H_PRES` per cent of cells carrying lodgepole were attacked against `r H_ABS` per cent of cells without it, the same direction and roughly the same magnitude the companion study finds at landscape extent. Host and elevation do move together here. Lodgepole percentage correlates with elevation at `r sprintf("%.2f", R_PL_EL)` across the frame, and the binary host indicator the model actually fits correlates with it at `r sprintf("%.2f", R_HOST_EL)`.
+
+That is worth stating carefully, because collinearity of this size is not on its own a reason a coefficient cannot be estimated. A correlation of `r sprintf("%.2f", R_HOST_EL)` between two predictors implies a variance inflation factor of about `r sprintf("%.2f", VIF_HOST)`, which over `r format(N_FR, big.mark = ",")` cells is unremarkable and would disqualify nothing. The binding constraint is not the correlation but the information: dependence at this scale means the frame carries nothing like `r format(N_FR, big.mark = ",")` independent observations, and the block bootstrap of @sec-blocks puts the effective number at the `r K_500` blocks a `r BLOCK_M` m grid affords. Two predictors that move together, asked to separate on that much information, will not. At landscape extent the companion study separates them because the elevation gradient runs far enough for pine-poor ground to occur at every height, and because the extent affords hundreds of blocks rather than tens.
+
+## Conditioned coefficients {#sec-conditioned}
+
+```{r}
+#| label: tbl-conditioned
+#| echo: false
+#| tbl-cap: "Burn severity coefficients on grey-stage attack, as log-odds against low severity, crude and then conditioned on host presence and elevation. Intervals are spatial block bootstrap percentiles at 500 m blocks. An interval that excludes zero is marked."
+
+## glm.fit on a prebuilt model matrix rather than formula glm: arithmetically
+## identical and roughly thirty times faster over the bootstrap.
+bfit <- function(X, y, idx) {
+  f <- suppressWarnings(glm.fit(X[idx, , drop = FALSE], y[idx], family = binomial()))
+  if (!f$converged) rep(NA_real_, ncol(X)) else f$coefficients
+}
+blocks_of <- function(side_m) {
+  s <- round(side_m / RES_M)
+  split(seq_len(nrow(FR)), paste(FR$row %/% s, FR$col %/% s))
+}
+block_boot <- function(form, side_m = BLOCK_M, seed = 42) {
+  X <- model.matrix(form, FR); y <- FR$y
+  est <- bfit(X, y, seq_len(nrow(FR)))
+  ids <- blocks_of(side_m); K <- length(ids)
+  set.seed(seed)
+  M <- vapply(seq_len(B_BOOT),
+              function(b) bfit(X, y, unlist(ids[sample.int(K, K, TRUE)], use.names = FALSE)),
+              numeric(ncol(X)))
+  ci <- apply(M, 1, quantile, c(0.025, 0.975), na.rm = TRUE)
+  tibble(Term = colnames(X), Estimate = est, Lower = ci[1, ], Upper = ci[2, ], K = K)
+}
+
+M_CRUDE <- block_boot(F_CRUDE)
+M_ADJ   <- block_boot(F_ADJ)
+M_QUAD  <- block_boot(F_QUAD)
+
+## Interval formatting and the clears-zero verdict, written once. The verdict is
+## a logical test on the numbers, never a string compared against a label.
+ci_txt <- function(lo, hi) sprintf("[%.3f, %.3f]", lo, hi)
+clears <- function(lo, hi) lo * hi > 0
+
+pick <- function(m, lbl) m |> filter(Term != "(Intercept)") |>
+  transmute(Model = lbl, Term,
+            Estimate = round(Estimate, 3),
+            Interval = ci_txt(Lower, Upper),
+            ` ` = ifelse(clears(Lower, Upper), "clears zero", ""))
+COND <- bind_rows(pick(M_CRUDE, "Severity only"),
+                  pick(M_ADJ,   "+ host + elevation"),
+                  pick(M_QUAD,  "+ elevation squared"))
+
+gv <- function(m, tm) m$Estimate[m$Term == tm]
+MOD_CRUDE <- gv(M_CRUDE, "sevModerate"); MOD_ADJ <- gv(M_ADJ, "sevModerate")
+ATTEN <- 100 * (1 - MOD_ADJ / MOD_CRUDE)
+show(COND, "tbl-conditioned", "llrll") |> collapse_rows(1, valign = "top")
+```
+
+Three things follow, and only the first is a positive result.
+
+**Moderate severity survives conditioning, attenuated.** The crude coefficient of `r sprintf("%.3f", MOD_CRUDE)` falls to `r sprintf("%.3f", MOD_ADJ)` once host presence and elevation are in the model, so roughly `r round(ATTEN)` per cent of the crude association is host and terrain. What remains still clears the block interval. Adding a quadratic elevation term moves it hardly at all.
+
+**High severity is never distinguishable from low.** Its interval spans zero in every specification. The non-monotone shape that all three records trace is therefore a claim the data supports at its peak and not at its fall: attack is elevated at moderate severity, and whether it declines at high severity cannot be settled from `r format(HOST$Cells[HOST$Stratum == "High severity"], big.mark = ",")` cells. **Do not report a demonstrated decline at high severity.**
+
+**Host cover cannot be separated from elevation here, and elevation wins.** Entered alongside elevation, host presence carries an interval that spans zero comfortably, despite the crude contrast of `r H_PRES` against `r H_ABS` per cent. Elevation is the only covariate whose interval excludes zero in every specification. This does not contradict the companion study's finding that host governs the landscape pattern. It means that at this extent the question cannot be asked, for the reason @sec-collinear gives: the two predictors move together, and `r K_500` effective observations are not enough to break the tie between them.
+
+```{r}
+#| label: tbl-elev
+#| echo: false
+#| tbl-cap: "The elevation term inside the burn, against the landscape-scale form the companion study reports. The quadratic term is negligible and its implied optimum falls far outside the elevation range the burn spans, so within this clip the relationship is monotone."
+
+EL_RANGE <- range(FR$elev)
+b1 <- gv(M_QUAD, "ec"); b2 <- gv(M_QUAD, "I(ec^2)")
+PEAK <- 1400 + 100 * (-b1 / (2 * b2))
+
+## Estimate with its interval, by term. gv() already did the estimate half.
+term_ci <- function(m, tm) {
+  r <- m[m$Term == tm, ]
+  sprintf("%.3f  %s", r$Estimate, ci_txt(r$Lower, r$Upper))
+}
+
+ELT <- tibble(
+  Quantity = c("Elevation range spanned by the burn",
+               "Linear elevation, log-odds per 100 m",
+               "Quadratic elevation term",
+               "Implied optimum of the fitted quadratic",
+               "Landscape-scale optimum, companion study"),
+  Value = c(sprintf("%.0f to %.0f m", EL_RANGE[1], EL_RANGE[2]),
+            term_ci(M_ADJ, "ec"),
+            term_ci(M_QUAD, "I(ec^2)"),
+            sprintf("%.0f m", PEAK),
+            "about 1,430 m"))
+show(ELT, "tbl-elev", "ll")
+```
+
+The companion study finds beetle attack peaking near 1,430 m across 1,776 m of relief [@murphy2026refugia]. Inside this burn the fitted optimum lands at `r round(PEAK)` m, far below anything the clip contains, which is the arithmetic way of saying the quadratic has no support here: over `r round(diff(EL_RANGE))` m of truncated gradient the relationship is monotone increasing. The landscape-scale hump is not contradicted, it is invisible. An analyst working only inside this perimeter would report that beetle attack rises with elevation without limit.
+
+## Block bootstrap inference {#sec-blocks}
+
+```{r}
+#| label: moran
+#| echo: false
+#| output: false
+
+## Moran's I on the response, over the analysis frame. An earlier draft asserted
+## this was high without computing it; it is computed here so the sentence below
+## carries a number. Queen adjacency on the native grid, which is the shortest
+## lag available and therefore the strongest test of cell-to-cell dependence.
+MI_R <- rast(matrix(NA_real_, nrow(red), ncol(red)),
+             extent = ext(red), crs = crs(red))
+MI_R[cbind(FR$row, FR$col)] <- FR$y
+MORAN <- terra::autocor(MI_R, method = "moran", global = TRUE)
+```
+
+Moran's I on the response is `r sprintf("%.2f", MORAN)` at queen adjacency, and the residual correlogram below shows dependence persisting well beyond a single cell, so naive standard errors would be meaningless. The block bootstrap fixes that, but the block size is not free: blocks must be large enough to contain the dependence and numerous enough to resample. Over a burn this size the two requirements collide.
+
+```{r}
+#| label: fig-blocks
+#| echo: false
+#| fig-cap: "The moderate-against-low severity coefficient under block bootstraps of increasing block size. The estimate is fixed; only the interval changes, and the number of blocks each size affords is printed above it. The extent caps the largest usable block, not the conclusion."
+#| fig-width: 5.6
+#| fig-height: 3.2
+
+## The 500 m run is M_ADJ exactly: same formula, same blocks, same seed, same
+## draws. Reusing it saves a redundant 400-replicate bootstrap. Each block_boot
+## call seeds itself and draws nothing beforehand, so this cannot perturb the
+## RNG stream of any other run.
+SWEEP_RAW <- lapply(BLOCK_SWEEP, function(m) {
+  fit <- if (m == BLOCK_M) M_ADJ else block_boot(F_ADJ, side_m = m)
+  fit |> filter(Term == "sevModerate") |> mutate(`Block side (m)` = m)
+}) |> bind_rows()
+
+## Numbers stay numbers. Formatting is a leaf, never an input: the previous
+## version formatted these bounds into a string and regex-parsed them back.
+SWEEP <- SWEEP_RAW |>
+  transmute(`Block side (m)`, Blocks = K, Estimate = round(Estimate, 3),
+            Interval = ci_txt(Lower, Upper),
+            ` ` = ifelse(clears(Lower, Upper), "clears zero", "spans zero"))
+
+## The correlogram that justifies the block sizes tried.
+res <- residuals(glm(F_ADJ, binomial, FR), type = "pearson")
+set.seed(7); ii <- sample(nrow(FR), 3000)
+
+## dist() enumerates pairs in the same column-major order lower.tri() selects,
+## so the two vectors stay aligned. The previous form built four dense 3000 by
+## 3000 matrices to read two triangles out of them.
+dd <- as.vector(dist(cbind(FR$row[ii], FR$col[ii]))) * RES_M
+rr <- outer(res[ii], res[ii], "*") / var(res[ii])
+rr <- rr[lower.tri(rr)]
+bins <- cut(dd, c(0, 100, 200, 300, 500, 800, 1200, Inf))
+CORR <- tibble(`Lag (m)` = levels(bins),
+               `Residual correlation` = round(as.numeric(tapply(rr, bins, mean)), 3))
+
+invisible(keep(SWEEP, "fig-blocks"))
+
+FIG_BLK <- ggplot(SWEEP_RAW, aes(factor(`Block side (m)`), Estimate)) +
+  geom_hline(yintercept = 0, linetype = "22", colour = "grey40") +
+  geom_linerange(aes(ymin = Lower, ymax = Upper), linewidth = 0.55, colour = "#7b3294") +
+  geom_point(size = 2.2, colour = "#7b3294") +
+  geom_text(aes(y = Upper, label = paste(K, "blocks")), vjust = -0.9, size = 2.5,
+            colour = "grey30") +
+  scale_y_continuous(expand = expansion(mult = c(0.08, 0.18))) +
+  labs(x = "Block side (m)", y = "Log-odds, moderate against low severity") +
+  theme(panel.grid.major.x = element_blank())
+BLK_PATH <- file.path("..", "03.outputs", "PNG", "fig-blocks.png")
+ggsave(BLK_PATH, FIG_BLK, width = 5.6, height = 3.2, dpi = 300, bg = "white")
+knitr::include_graphics(BLK_PATH)
+```
+
+```{r}
+#| label: tbl-blocks
+#| echo: false
+#| tbl-cap: "The block sweep as numbers: the moderate-against-low coefficient, the interval it carries at each block size, and the blocks each size affords. The figure shows that only the interval moves; this table gives the bounds it moves between."
+
+show(SWEEP, "tbl-blocks", "rrrll")
+```
+
+```{r}
+#| label: tbl-correlogram
+#| echo: false
+#| tbl-cap: "Residual correlogram of the conditioned model across the burn, by distance lag. This is the left panel of @fig-correlogram at the precision the block-size argument uses."
+
+show(CORR, "tbl-correlogram", "lr")
+```
+
+Residual dependence falls from `r CORR$"Residual correlation"[1]` within 100 m to `r CORR$"Residual correlation"[4]` by 500 m (@tbl-correlogram), so a 500 m block contains most of it. @tbl-blocks gives the sweep as numbers. @fig-correlogram plots this alongside the same measurement inside the regeneration plots, because the two scales meet the same obstacle and it is easier to see them together. The burn spans about 4.0 by 2.0 km, which affords `r SWEEP$Blocks[SWEEP$"Block side (m)" == BLOCK_M]` blocks at that size and only `r SWEEP$Blocks[which.max(SWEEP$"Block side (m)")]` at `r max(SWEEP$"Block side (m)")` m. The companion study uses roughly 1 km blocks over a landscape that affords hundreds; here 1 km would afford eight, which is not a bootstrap.
+
+```{r}
+#| label: sweep-summary
+#| echo: false
+#| output: false
+
+## Let the sweep state its own conclusion rather than asserting one that a
+## refit might quietly invalidate.
+N_CLEAR  <- sum(clears(SWEEP_RAW$Lower, SWEEP_RAW$Upper))
+WEAKEST  <- SWEEP_RAW$`Block side (m)`[which.min(SWEEP_RAW$Lower)]
+WEAK_LO  <- min(SWEEP_RAW$Lower)
+```
+
+**So the moderate-severity result is reported with its dependence stated.** It clears the interval at all `r nrow(SWEEP)` block sizes tried, so the conclusion does not rest on a convenient choice of block, and it is weakest at `r WEAKEST` m where the lower bound sits at `r sprintf("%.3f", WEAK_LO)` on `r SWEEP$Blocks[SWEEP$"Block side (m)" == WEAKEST]` blocks. That is the honest edge of what this extent supports.
+
+The general point is not a robustness check that the study passed. It is the study's own subject matter arriving in its own inference: the extent that makes the compound-disturbance question askable at all is the same extent that decides how firmly it can be answered, and an analyst who reported only the 500 m interval would be concealing that the margin at 750 m is a hair's breadth.
+
+# Regeneration interaction {#sec-interaction}
+
+The first question asked whether beetle and fire are associated on the ground. This one asks whether their effects on what grew back multiply or merely add. It is the question the parent study's title and abstract assert an answer to and its model never puts to the test, and unlike question A it is untouched by the perimeter clip, because the seedling point pattern lies wholly inside the burn and every cell entering the model is equally masked.
+
+The test is direct. Refit the published model with the beetle by fire product term and compare.
+
+## Model specification {#sec-ppframe}
+
+The parent study models conifer regeneration as an inhomogeneous point process over three four-hectare plots, fitted by the Berman-Turner device: the seedlings enter as data points, a regular grid of dummy points carries the quadrature weights, and the trend is estimated by weighted Poisson regression on the pooled set [@baddeley2000]. The specification is reproduced here exactly, including its quadrature spacing, so that anything that changes when the product term is added is the product term and not a difference of setup.
+
+```{r}
+#| label: ppframe
+#| echo: false
+
+## PLOT_SF was read for fig-location; reading the three shapefiles a second time
+## here would risk the two copies drifting apart.
+WIN <- st_union(PLOT_SF)
+WIN_HA <- as.numeric(st_area(WIN)) / 1e4
+
+## The seedling frame. Three counts are in circulation for this point pattern
+## and the difference between them is a species filter, not a rival survey, so
+## it is derived here rather than chosen.
+SEED_ALL <- st_read(dpath("seedlings/Seedlings.shp"), quiet = TRUE)
+SPECIES  <- c("0", "1", "2", "3", "4", "5", "7")   # the seven-species lookup of the parent study
+IN_LUT   <- as.character(SEED_ALL$species) %in% SPECIES
+SEED     <- SEED_ALL[IN_LUT, ]
+N_RAW    <- nrow(SEED_ALL); N_DROP <- sum(!IN_LUT); N_SEED <- nrow(SEED)
+## Every retained seedling falls inside the plot windows, so the species filter
+## is the whole of the difference between the two counts.
+stopifnot(N_RAW - N_DROP == N_SEED,
+          all(lengths(st_within(SEED, WIN)) > 0))
+
+## The quadrature grid, at the spacing the published fit used.
+bx <- st_bbox(WIN)
+GR <- expand.grid(x = seq(bx["xmin"] + PP_DX/2, bx["xmax"], by = PP_DX),
+                  y = seq(bx["ymin"] + PP_DX/2, bx["ymax"], by = PP_DX))
+GR <- GR[lengths(st_within(st_as_sf(GR, coords = c("x", "y"), crs = 32611), WIN)) > 0, ]
+
+## The covariates of the published trend, read from the same files it read. The
+## grey-stage layer is the corrected union of 2 June 2026, which is the raster
+## the parent study's own final refit uses; the legacy layer it replaced is
+## discussed in sec-ppsupport.
+PP_RAS <- list(
+  Aspect = rast(dpath("terrain_environment/Aspect.utm.tif")),
+  RIX    = rast(dpath("terrain_environment/Rutm.tif")),
+  Wind   = rast(dpath("terrain_environment/Wind.utm.tif")),
+  MPB_G  = rast(file.path(GREY_FIX, "rasters", "mpb_grey_corrected.tif")),
+  MPB_R  = rast(dpath("beetle_stages/Beetle.Outbreak.RedStage.tif")),
+  Fire_H = rast(dpath("fire_severity/Fire.High.NDBR.tif")),
+  Fire_L = rast(dpath("fire_severity/Fire.Low.NDBR.tif")),
+  Fire_M = rast(dpath("fire_severity/Fire.Med.NDBR.tif")))
+
+PP_BINARY <- c("MPB_G", "MPB_R", "Fire_H", "Fire_L", "Fire_M")
+at_points <- function(xy) {
+  pt <- vect(as.matrix(xy), type = "points", crs = "EPSG:32611")
+  z <- lapply(PP_RAS, function(r) as.numeric(terra::extract(r, project(pt, crs(r)))[, 2]))
+  ## Sentinels, as the published script treats them: -1 is flat ground on the
+  ## aspect surface and -999 is missing wind. Beers northness on the remainder.
+  z$Aspect <- cos(ifelse(z$Aspect == -1, NA, z$Aspect) * pi / 180)
+  z$Wind   <- ifelse(z$Wind <= -990, NA, z$Wind)
+  for (nm in PP_BINARY) z[[nm]] <- ifelse(is.na(z[[nm]]), NA, as.numeric(z[[nm]] == 1))
+  as.data.frame(z)
+}
+
+SXY <- st_coordinates(SEED)[, 1:2]
+QXY <- as.matrix(GR)
+PD <- at_points(SXY); PD$SS_dist <- as.numeric(SEED$distance_m)
+PQ <- at_points(QXY)
+## Seed source distance is recorded per seedling, not per cell, so the published
+## fit carries it to the quadrature points by nearest neighbour. Reproduced here
+## because dropping it would change every other coefficient.
+PQ$SS_dist <- PD$SS_dist[FNN::get.knnx(SXY, QXY, k = 1)$nn.index[, 1]]
+
+PD$x <- SXY[, 1]; PD$y <- SXY[, 2]; PD$data_pt <- TRUE
+PQ$x <- QXY[, 1]; PQ$y <- QXY[, 2]; PQ$data_pt <- FALSE
+PP <- rbind(PD, PQ)
+## Berman-Turner: quadrature weight is the cell area at a dummy point and a
+## negligible constant at a data point, and the response is the reciprocal of
+## the weight where a point was observed and zero elsewhere.
+PP$w  <- ifelse(PP$data_pt, 1, PP_DX^2)
+PP$yy <- ifelse(PP$data_pt, 1 / PP$w, 0)
+
+F_ADD <- yy ~ SS_dist + Aspect + RIX + Wind + MPB_G + MPB_R + Fire_H + Fire_L
+F_PROD <- update(F_ADD, . ~ . + MPB_G:Fire_H + MPB_G:Fire_L +
+                             MPB_R:Fire_H + MPB_R:Fire_L)
+PP <- PP[complete.cases(PP[, all.vars(F_ADD)[-1]]), ]
+N_DATA <- sum(PP$data_pt); N_DUMMY <- sum(!PP$data_pt)
+
+## The severity class of each point, needed for the support table and for the
+## four-level specification. Built from the class masks, not from the composite
+## severity code, which is the encoding trap of sec-decode.
+PP$Severity <- factor(
+  with(PP, ifelse(Fire_H == 1, "High", ifelse(Fire_M == 1, "Moderate",
+         ifelse(Fire_L == 1, "Low", UNCLASSED)))),
+  levels = c(SEV_LEVELS, UNCLASSED))
+stopifnot(!any(is.na(PP$Severity)))
+```
+
+The shapefile holds `r format(N_RAW, big.mark = ",")` points, of which `r N_DROP` carry a species code outside the seven-species lookup the parent study used, leaving `r format(N_SEED, big.mark = ",")`, all inside the plot windows. The two counts in circulation therefore differ by a species filter and nothing else; a third, `r format(3886, big.mark = ",")` in the published abstract, matches neither and is reproduced by no filter tried here. The fit uses `r format(N_DATA, big.mark = ",")` data points against `r format(N_DUMMY, big.mark = ",")` quadrature points over `r sprintf("%.2f", WIN_HA)` ha.
+
+## Fit reproduction {#sec-ppreproduce}
+
+Nothing below is worth reading unless the additive fit reproduces. It does, to the precision the published table is printed at.
+
+```{r}
+#| label: tbl-ppreproduce
+#| echo: false
+#| tbl-cap: "The published additive trend, as reported by the parent study's final refit and as recomputed here from the same rasters, with the standard errors each carries. The comparison is the licence for everything that follows: a product term added to a model that did not reproduce would test nothing. The standard-error columns show that the published uncertainty is the naive Poisson uncertainty, which is the premise of @sec-pphonest."
+
+## glm.fit on a prebuilt model matrix, as in sec-conditioned: identical
+## arithmetic to formula glm and fast enough to bootstrap.
+## A resample that omits the blocks carrying one of the four product cells leaves
+## that term unidentified: glm.fit converges and returns NA for that column
+## rather than failing. The NA is left in place deliberately, so that each term's
+## percentile is taken over the draws that identified it and pp_boot can count
+## how many those were. Collapsing the whole draw to NA instead would hide which
+## term was degenerate, and treating the NA as an estimate would be worse.
+pfit <- function(X, idx) {
+  f <- suppressWarnings(glm.fit(X[idx, , drop = FALSE], PP$yy[idx],
+                                weights = PP$w[idx], family = poisson()))
+  if (!f$converged) rep(NA_real_, ncol(X)) else f$coefficients
+}
+X_ADD  <- model.matrix(F_ADD, PP)
+X_PROD <- model.matrix(F_PROD, PP)
+stopifnot(nrow(X_ADD) == nrow(PP), nrow(X_PROD) == nrow(PP))
+B_ADD  <- pfit(X_ADD, seq_len(nrow(PP)))
+B_PROD <- pfit(X_PROD, seq_len(nrow(PP)))
+
+## The naive Poisson standard error, from the weighted information matrix of the
+## same fit. Defined here rather than in sec-ppproduct because the reproduction
+## below needs it: if the published standard errors match this, the claim that
+## they are Poisson standard errors stops being an inference about the parent
+## study's software and becomes something the table shows.
+pois_ci <- function(X, b) {
+  eta <- drop(X %*% b); mu <- exp(eta)
+  V <- solve(crossprod(X, X * (mu * PP$w)))
+  sqrt(diag(V))
+}
+SE_ADD <- pois_ci(X_ADD, B_ADD)
+
+PUB <- read.csv(file.path(GREY_FIX, "tables", "Table12_LGCP_coefficients_CORRECTED.csv"))
+ix <- match(names(B_ADD), PUB$term)
+REPRO <- tibble(Term = names(B_ADD),
+                Published = round(PUB$Estimate[ix], 4),
+                Recomputed = round(unname(B_ADD), 4),
+                `Published SE` = round(PUB$Std.Error[ix], 4),
+                `Poisson SE` = round(unname(SE_ADD), 4)) |>
+  mutate(Difference = round(Recomputed - Published, 4),
+         `SE difference` = round(`Poisson SE` - `Published SE`, 4))
+## Both halves of the reproduction are load-bearing. The coefficients licence the
+## refit; the standard errors licence the claim of sec-pphonest that the
+## published uncertainty is Poisson uncertainty. Fail the render on either.
+stopifnot(max(abs(REPRO$Difference)) < 1e-3,
+          max(abs(REPRO$`SE difference`)) < 1e-3)
+SE_MAXDIFF <- max(abs(REPRO$`SE difference`))
+show(REPRO, "tbl-ppreproduce", "lrrrrrr")
+```
+
+All `r nrow(REPRO)` coefficients agree, and the assertion above fails the render if they ever stop agreeing. So do the standard errors, to within `r sprintf("%.0e", SE_MAXDIFF)`, and that second agreement is worth pausing on because the rest of this section rests on it. The right-hand columns set the published standard errors beside the standard errors implied by an ordinary weighted Poisson fit to the same design matrix. They are the same numbers. The published uncertainty is therefore Poisson uncertainty, not an inference drawn here about what the parent study's software must have done but a quantity this table reproduces from scratch.
+
+Two further features of the fit matter for what follows. The grey-stage coefficient is `r sprintf("%.4f", REPRO$Published[REPRO$Term == "MPB_G"])`, which is zero to three decimal places: the parent study's own corrected refit already found no grey-stage main effect. And the two fire terms are indicators for high and low severity, which means they are contrasts against whatever the reference category contains.
+
+## Covariate support {#sec-ppsupport}
+
+A coefficient is only as good as the ground that identifies it. Before adding a product term it is worth counting the quadrature points available to estimate one.
+
+```{r}
+#| label: tbl-ppsupport
+#| echo: false
+#| tbl-cap: "Quadrature points inside the three plots, by burn severity class and beetle surface. The published fit's reference category is the union of the two rows that carry no severity indicator, so it pools moderate severity with unburned and unclassified ground."
+
+Q <- PP[!PP$data_pt, ]
+sup_row <- function(cls) {
+  s <- Q[Q$Severity == cls, ]
+  tibble(Class = cls, `Quadrature points` = nrow(s),
+         `Area (ha)` = round(nrow(s) * PP_DX^2 / 1e4, 2),
+         `Grey attacked` = sum(s$MPB_G == 1),
+         `Red attacked`  = sum(s$MPB_R == 1),
+         `In reference category` = all(s$Fire_H == 0 & s$Fire_L == 0))
+}
+SUP <- bind_rows(lapply(levels(PP$Severity), sup_row))
+REF_N   <- sum(SUP$`Quadrature points`[SUP$`In reference category`])
+REF_MOD <- SUP$`Quadrature points`[SUP$Class == "Moderate"]
+GREY_Q  <- sum(Q$MPB_G == 1); RED_Q <- sum(Q$MPB_R == 1)
+show(SUP |> mutate(`In reference category` = ifelse(`In reference category`, "yes", "")),
+     "tbl-ppsupport", "lrrrrl")
+```
+
+Three things follow.
+
+**The reference category is a mixture.** The published fit carries indicators for high and low severity only, so its reference is every point that is neither, which is `r format(REF_N, big.mark = ",")` quadrature points, of which `r format(REF_MOD, big.mark = ",")` are moderate severity and the remainder unburned or unclassified. Moderate is not a neutral baseline here: it is the class that carries the most beetle attack of the three, as @fig-gradient shows across the whole burn and this table repeats inside the plots. So the published fire coefficients are contrasts against a pooled category that is `r round(100 * REF_MOD / REF_N)` per cent the severity class with the strongest beetle association. Nothing in the published fit is wrong about this, but neither coefficient means what its label suggests.
+
+**The grey-stage term is now adequately supported, and was not always.** The corrected union carries grey attack on `r format(GREY_Q, big.mark = ",")` of `r format(nrow(Q), big.mark = ",")` quadrature points. The layer it replaced, built by a value test the parent study later diagnosed as wrong, carried grey attack on seven 30 m cells in the same plots [@murphy2026greyfix]; a coefficient reported at p \< 10^-10^ in the first submission rested on those seven cells and the corrected refit moved it to zero. That correction was made before publication and is to the parent study's credit, and is recorded here because it is the same failure mode this paper is about, caught one stage earlier.
+
+**Red attack is confined as @sec-provenance describes**, appearing on `r format(RED_Q, big.mark = ",")` quadrature points and on none outside the classified severity classes, which is the narrower of the two clips arriving inside the model.
+
+## Product terms {#sec-ppproduct}
+
+```{r}
+#| label: tbl-ppproduct
+#| echo: false
+#| tbl-cap: "The additive trend as published, and the same trend with the four beetle by fire product terms added. Intervals are the naive Poisson intervals the published likelihood implies, and terms excluding zero on those intervals are marked. Read this way the interaction is emphatic; @sec-pphonest reads it the other way."
+
+## pois_ci and SE_ADD are defined in sec-ppreproduce, where the reproduction of
+## the published standard errors needs them.
+SE_PROD <- pois_ci(X_PROD, B_PROD)
+
+side <- function(b, se, lbl) tibble(
+  Term = names(b), Model = lbl, Estimate = round(unname(b), 3),
+  Interval = ci_txt(b - 1.96 * se, b + 1.96 * se),
+  ` ` = ifelse(clears(b - 1.96 * se, b + 1.96 * se), "excludes zero", ""))
+PRODT <- grep(":", names(B_PROD), value = TRUE)
+PROD <- bind_rows(side(B_ADD, SE_ADD, "As published"),
+                  side(B_PROD, SE_PROD, "With product terms")) |>
+  filter(Term != "(Intercept)")
+
+## The likelihood ratio the published likelihood would report.
+dev_of <- function(X, b) {
+  mu <- exp(drop(X %*% b)) * PP$w; y <- PP$yy * PP$w
+  2 * sum(ifelse(y > 0, y * log(y / mu), 0) - (y - mu))
+}
+LR_STAT <- dev_of(X_ADD, B_ADD) - dev_of(X_PROD, B_PROD)
+LR_DF   <- length(PRODT)
+LR_P    <- pchisq(LR_STAT, LR_DF, lower.tail = FALSE)
+N_PROD_SIG <- sum(clears(B_PROD[PRODT] - 1.96 * SE_PROD[PRODT],
+                         B_PROD[PRODT] + 1.96 * SE_PROD[PRODT]))
+show(PROD, "tbl-ppproduct", "llrll") |> collapse_rows(2, valign = "top")
+```
+
+Read through the likelihood the published model is fitted with, the interaction is not marginal. The likelihood ratio statistic is `r sprintf("%.1f", LR_STAT)` on `r LR_DF` degrees of freedom, a p-value below `r format(signif(max(LR_P, 1e-16), 1), scientific = TRUE)`, and `r N_PROD_SIG` of the `r LR_DF` product terms carry intervals excluding zero. An analyst who stopped here would report that the compound-disturbance interaction is confirmed, and would have the parent study's own machinery behind the claim.
+
+Two details ought to give pause before that is written down. The product terms do not share a sign: grey attack raises regeneration at high severity and lowers it at low severity, and the fitted signs reverse between the two beetle surfaces on the same severity class. And adding them moves the main effects sharply, taking the high-severity term from `r sprintf("%.3f", B_ADD[["Fire_H"]])` to `r sprintf("%.3f", B_PROD[["Fire_H"]])`. A product term that is real usually leaves the rest of the model roughly where it found it.
+
+## Spatially adjusted inference {#sec-pphonest}
+
+The published fit is described as an inhomogeneous log-Gaussian Cox process, and estimating the trend of a Cox process by the Berman-Turner device is legitimate: the Poisson score is a composite likelihood, and it returns consistent estimates of the trend whether or not the process is Poisson [@baddeley2000; @waagepetersen2007]. What the composite likelihood does not return is the variance. The standard errors it reports are the standard errors of the Poisson model it is arithmetically equivalent to, and those assume seedlings are placed independently given the covariates. So the estimates carry the Cox specification and the uncertainty carries the Poisson one, and only the second is affected.
+
+That the process is not Poisson is established in the parent study itself. It devotes two figures to Ripley's inhomogeneous K, testing the observed pattern against a null of non-constant intensity through 999 Monte Carlo simulations, and reports significant clustering for every species examined [@murphy2026]. Conifer regeneration is clustered, for seed-dispersal and microsite reasons that have nothing to do with the covariates, and finding it so is the expected result rather than a defect. The point is only that the same paper cannot use a clustered-process diagnostic as a result and an independent-process variance as its inference. The residuals of the refit say the same thing directly.
+
+```{r}
+#| label: fig-correlogram
+#| echo: false
+#| fig-cap: "Residual dependence at the two scales the study works at. Left, the conditioned model of @sec-conditioning across the burn, where dependence has largely decayed by 500 m. Right, the fit with product terms over the quadrature points inside the regeneration plots, where it has decayed by about 100 m. The two panels are the same obstacle two orders of magnitude apart, and each sets the block sizes tried at its own scale."
+#| fig-width: 7.2
+#| fig-height: 3.2
+
+pres <- function(X, b) {
+  mu <- exp(drop(X %*% b)) * PP$w
+  (PP$yy * PP$w - mu) / sqrt(mu)
+}
+rq <- pres(X_PROD, B_PROD)[!PP$data_pt]
+rq <- rq - mean(rq)
+set.seed(7)
+jj <- sample(nrow(Q), min(2500L, nrow(Q)))
+dd <- as.vector(dist(cbind(Q$x[jj], Q$y[jj])))
+rr <- outer(rq[jj], rq[jj]) / mean(rq[jj]^2)
+rr <- rr[lower.tri(rr)]
+pbins <- cut(dd, c(0, 25, 50, 75, 100, 150, 200, Inf))
+PCORR <- tibble(`Lag (m)` = levels(pbins),
+                `Residual correlation` = round(as.numeric(tapply(rr, pbins, mean)), 3)) |>
+  filter(!is.na(`Residual correlation`))
+invisible(keep(PCORR, "fig-correlogram"))
+
+## Bin midpoints for plotting. cut() labels are "(a,b]", and the open final bin
+## has no midpoint, so it is dropped rather than given an invented one.
+mid_of <- function(lab) {
+  n <- regmatches(lab, gregexpr("-?[0-9.]+|Inf", lab))
+  vapply(n, function(v) mean(as.numeric(v)), numeric(1))
+}
+corr_df <- function(x, scale) {
+  x |> mutate(Lag = mid_of(`Lag (m)`), Scale = scale) |>
+    filter(is.finite(Lag)) |> select(Lag, r = `Residual correlation`, Scale)
+}
+CORR_BOTH <- bind_rows(
+  corr_df(CORR,  "Across the burn, conditioned model"),
+  corr_df(PCORR, "Inside the plots, fit with product terms"))
+
+FIG_CORR <- ggplot(CORR_BOTH, aes(Lag, r)) +
+  geom_hline(yintercept = 0, linetype = "22", colour = "grey40") +
+  geom_line(linewidth = 0.5, colour = "#7b3294") +
+  geom_point(size = 1.9, colour = "#7b3294") +
+  facet_wrap(~ Scale, scales = "free_x") +
+  labs(x = "Lag (m)", y = "Residual correlation") +
+  theme(strip.text = element_text(face = "bold", size = 8))
+CORR_PATH <- file.path("..", "03.outputs", "PNG", "fig-correlogram.png")
+ggsave(CORR_PATH, FIG_CORR, width = 7.2, height = 3.2, dpi = 300, bg = "white")
+knitr::include_graphics(CORR_PATH)
+```
+
+```{r}
+#| label: tbl-ppcorr
+#| echo: false
+#| tbl-cap: "Residual correlogram of the fit with product terms, over the quadrature points inside the plots. This is the right panel of @fig-correlogram at the precision that sets the block sizes tried below."
+
+show(PCORR, "tbl-ppcorr", "lr")
+```
+
+Dependence runs at `r PCORR$"Residual correlation"[1]` inside 25 m and is still `r PCORR$"Residual correlation"[3]` between 50 and 75 m, crossing zero at around 100 m (@tbl-ppcorr). A block that contains it must therefore be at least 75 to 100 m on a side, and a 200 m plot affords few of those. That collision is the same one @sec-blocks met at landscape scale, arriving again two orders of magnitude down.
+
+```{r}
+#| label: fig-interaction
+#| echo: false
+#| fig-cap: "The four product terms and the main effects they modify, under the Poisson likelihood the published model is fitted with and under a spatial block bootstrap across block sizes spanning the residual range. The estimate is the same in every case; only the interval changes. Three of the four product terms exclude zero under the Poisson likelihood and none excludes it at any block size."
+#| fig-width: 7.4
+#| fig-height: 4.4
+
+pp_boot <- function(X, side_m, seed = 11) {
+  ids <- split(seq_len(nrow(PP)), paste(PP$x %/% side_m, PP$y %/% side_m))
+  K <- length(ids)
+  set.seed(seed)
+  M <- vapply(seq_len(B_BOOT),
+              function(b) pfit(X, unlist(ids[sample.int(K, K, TRUE)], use.names = FALSE)),
+              numeric(ncol(X)))
+  ci <- apply(M, 1, quantile, c(0.025, 0.975), na.rm = TRUE)
+  tibble(Term = colnames(X), Lower = ci[1, ], Upper = ci[2, ], K = K,
+         Usable = apply(M, 1, function(v) sum(is.finite(v))))
+}
+
+PP_SHOWN <- c("MPB_G", "MPB_R", "Fire_H", "Fire_L", PRODT)
+PPB_RAW <- bind_rows(lapply(PP_SWEEP, function(m)
+  pp_boot(X_PROD, m) |> filter(Term %in% PP_SHOWN) |> mutate(`Block side (m)` = m)))
+
+## The ground each product term is estimated from: quadrature points where both
+## of its indicators are on. This is what a resample has to miss for the term to
+## become unidentified, so it is the number that explains the Usable counts.
+PROD_CELLS <- vapply(PRODT, function(t) {
+  v <- strsplit(t, ":", fixed = TRUE)[[1]]
+  sum(Q[[v[1]]] == 1 & Q[[v[2]]] == 1)
+}, integer(1))
+
+## Identification, carried forward rather than averaged away. A term is fully
+## identified at a block size only if every one of the B_BOOT draws estimated it;
+## anything less means some resample omitted the blocks carrying its cells, and
+## the percentile for that term is then taken over a selected subset of draws.
+PPB_RAW <- PPB_RAW |> mutate(Identified = Usable == B_BOOT)
+
+PPB <- PPB_RAW |>
+  transmute(`Block side (m)`, Blocks = K, Term,
+            Estimate = round(B_PROD[Term], 3),
+            Interval = ci_txt(Lower, Upper),
+            `Draws` = paste0(Usable, "/", B_BOOT),
+            ` ` = ifelse(clears(Lower, Upper), "clears zero", "spans zero"))
+invisible(keep(PPB, "fig-interaction"))
+
+## The published likelihood's own interval, drawn beside the block intervals so
+## the comparison the paper rests on is one figure rather than two tables.
+## Design-matrix column names are not axis labels. Written once here and reused
+## by the verdict chunk below, so the figure and the prose cannot disagree.
+PP_WORDS <- c(MPB_G = "grey attack", MPB_R = "red attack",
+              Fire_H = "high severity", Fire_L = "low severity")
+pp_label <- function(term) {
+  parts <- strsplit(term, ":", fixed = TRUE)
+  vapply(parts, function(v) {
+    lab <- paste(PP_WORDS[v], collapse = " by ")
+    paste0(toupper(substring(lab, 1, 1)), substring(lab, 2))
+  }, character(1))
+}
+
+SRC <- c("Poisson likelihood", paste(PP_SWEEP, "m blocks"))
+PPF <- bind_rows(
+  tibble(Term = PP_SHOWN, Lower = B_PROD[PP_SHOWN] - 1.96 * SE_PROD[PP_SHOWN],
+         Upper = B_PROD[PP_SHOWN] + 1.96 * SE_PROD[PP_SHOWN], Source = SRC[1]),
+  PPB_RAW |> transmute(Term, Lower, Upper,
+                       Source = paste(`Block side (m)`, "m blocks"))) |>
+  mutate(Estimate = B_PROD[Term],
+         Source = factor(Source, levels = SRC),
+         Kind = factor(ifelse(grepl(":", Term), "Product terms", "Main effects"),
+                       levels = c("Main effects", "Product terms")),
+         Term = factor(pp_label(Term), levels = rev(pp_label(PP_SHOWN))))
+
+FIG_INT <- ggplot(PPF, aes(Estimate, Term, colour = Source)) +
+  geom_vline(xintercept = 0, linetype = "22", colour = "grey40") +
+  geom_linerange(aes(xmin = Lower, xmax = Upper),
+                 position = position_dodge(width = 0.75), linewidth = 0.45) +
+  geom_point(position = position_dodge(width = 0.75), size = 1.3) +
+  scale_colour_manual(values = c("#b2182b", "#c6dbef", "#6baed6", "#2171b5", "#08306b"),
+                      name = NULL) +
+  facet_grid(Kind ~ ., scales = "free_y", space = "free_y") +
+  guides(colour = guide_legend(nrow = 1, reverse = FALSE)) +
+  labs(x = "Coefficient", y = NULL) +
+  theme(legend.position = "bottom", panel.grid.major.y = element_blank(),
+        strip.text.y = element_text(face = "bold", size = 8, angle = -90))
+INT_PATH <- file.path("..", "03.outputs", "PNG", "fig-interaction.png")
+ggsave(INT_PATH, FIG_INT, width = 7.4, height = 4.4, dpi = 300, bg = "white")
+knitr::include_graphics(INT_PATH)
+```
+
+```{r}
+#| label: tbl-ppblocks
+#| echo: false
+#| tbl-cap: "The same intervals as numbers, with the count of bootstrap draws that identified each term. A term short of the full count was unestimable in some resample, because the blocks carrying its cells were not drawn; its interval is then a percentile over the draws that did identify it and is read accordingly."
+
+show(PPB, "tbl-ppblocks", "rrlrlrl") |> collapse_rows(1:2, valign = "top")
+```
+
+```{r}
+#| label: tbl-sandwich
+#| echo: false
+#| tbl-cap: "A second variance estimate, independent of the bootstrap. Standard errors for the fit with product terms under the naive Poisson likelihood and under a cluster-robust sandwich clustered on the same spatial blocks, with the ratio between them. The bootstrap resamples blocks; the sandwich sums scores within them. The two answer the same question by different routes."
+
+## A block bootstrap over 14 to 36 blocks sits below the percentile method's
+## comfortable floor, so the inference should not rest on it alone. The sandwich
+## is the check a referee will already trust: the bread is the same Poisson
+## information pois_ci inverts, and the meat is the outer product of scores
+## summed within block, so dependence inside a block is carried and dependence
+## between blocks is assumed away. Same assumption as the bootstrap, different
+## estimator.
+cluster_se <- function(X, b, side_m) {
+  mu <- exp(drop(X %*% b))
+  V  <- solve(crossprod(X, X * (mu * PP$w)))          # bread: Poisson information
+  U  <- (PP$w * (PP$yy - mu)) * X                     # score contribution per point
+  S  <- rowsum(U, paste(PP$x %/% side_m, PP$y %/% side_m))
+  G  <- nrow(S)
+  ## The usual finite-cluster correction. With G this small it is not cosmetic.
+  meat <- crossprod(S) * (G / (G - 1))
+  sqrt(diag(V %*% meat %*% V))
+}
+
+SAND <- bind_rows(lapply(PP_OK, function(m) {
+  se <- cluster_se(X_PROD, B_PROD, m)
+  tibble(`Block side (m)` = m, Term = PP_SHOWN,
+         `Poisson SE` = round(unname(SE_PROD[PP_SHOWN]), 3),
+         `Cluster-robust SE` = round(unname(se[PP_SHOWN]), 3),
+         Ratio = round(unname(se[PP_SHOWN] / SE_PROD[PP_SHOWN]), 1),
+         lo = B_PROD[PP_SHOWN] - 1.96 * se[PP_SHOWN],
+         hi = B_PROD[PP_SHOWN] + 1.96 * se[PP_SHOWN])
+}))
+
+## The same verdict the bootstrap was asked for, from the other estimator.
+SAND_PROD_CLEAR <- sum(clears(SAND$lo[SAND$Term %in% PRODT],
+                              SAND$hi[SAND$Term %in% PRODT]))
+SAND_N_PROD <- sum(SAND$Term %in% PRODT)
+SAND_RANGE  <- range(SAND$Ratio)
+
+show(SAND |> select(-lo, -hi) |>
+       mutate(Term = pp_label(Term)), "tbl-sandwich", "rlrrr") |>
+  collapse_rows(1, valign = "top")
+```
+
+The sandwich of @tbl-sandwich agrees with the bootstrap of @tbl-ppblocks on both counts. It inflates the standard errors by a factor of `r sprintf("%.1f", SAND_RANGE[1])` to `r sprintf("%.1f", SAND_RANGE[2])`, in the same range as the interval widening the resampling produces, and of the `r SAND_N_PROD` product-term intervals it implies across the block sizes the correlogram licenses, `r SAND_PROD_CLEAR` exclude zero. Two estimators that share an assumption are not independent evidence, and both assume that blocks are independent of one another. But they differ in everything else, and a result that survived one because of an artefact of the other's construction would not survive both.
+
+**The direction of the remaining error is worth stating, because it does not run the same way for the two results.** Any residual dependence these methods fail to capture leaves the intervals still too narrow. For the product terms that is a conservative failure: the intervals reported here are, if anything, narrower than they should be, and they already span zero, so a fuller accounting of dependence can only strengthen the conclusion that the interaction is unsupported. For the moderate-severity peak of @sec-conditioning it runs the other way. That result is positive, it rests on an interval excluding zero, and an interval that is too narrow is exactly what would manufacture it. The negative result here is therefore the more secure of the two, and the positive one is reported at @sec-blocks with its weakest block size named for that reason.
+
+```{r}
+#| label: pp-verdict
+#| echo: false
+#| output: false
+
+## Let the sweep state the conclusion. Asserting one that a refit could
+## invalidate is the error sec-blocks records having made once already.
+PROD_ROWS  <- PPB_RAW |> filter(Term %in% PRODT)
+PROD_CLEAR <- sum(clears(PROD_ROWS$Lower, PROD_ROWS$Upper))
+
+MAIN_KEEP  <- PPB_RAW |> filter(!Term %in% PRODT) |>
+  group_by(Term) |> summarise(all_clear = all(clears(Lower, Upper)), .groups = "drop") |>
+  filter(all_clear) |> pull(Term)
+MAIN_WORDS <- paste(tolower(pp_label(MAIN_KEEP)), collapse = " and ")
+
+## PP_OK, the block sizes the correlogram licenses, is declared in setup because
+## tbl-sandwich needs it upstream of here.
+PP_OK_K  <- PPB_RAW |> filter(`Block side (m)` %in% PP_OK) |>
+  distinct(`Block side (m)`, K) |> arrange(desc(K))
+PP_OK_TXT <- paste(sprintf("%d at %d m", PP_OK_K$K, PP_OK_K$`Block side (m)`),
+                   collapse = " and ")
+## The widening factor is the paper's headline number, so it is computed only
+## where every draw identified the term. A partially identified term has an
+## interval taken over a selected subset of resamples, which inflates it for a
+## reason that has nothing to do with spatial dependence, and quoting that as
+## the cost of honest inference would overstate the case.
+DEGEN <- PPB_RAW |> filter(!Identified)
+WIDEN <- PPB_RAW |> filter(Identified) |>
+  mutate(naive = 2 * 1.96 * SE_PROD[Term], ratio = (Upper - Lower) / naive) |>
+  summarise(lo = min(ratio), hi = max(ratio), n = n())
+
+## The abstract lives in the YAML, where an inline `r` expression does not run, so
+## its six quantities are the only hard-coded numbers in the document. They are
+## asserted here instead: a refit that moves any of them fails the render rather
+## than leaving the abstract quietly contradicting the results.
+## This guard is only real with `error: false` in the YAML. Under `error: true`
+## a failure here printed nothing at all, because the chunk also sets
+## `output: false`, and the render exited 0 with the abstract contradicting the
+## results. That is how the previous 2.4 and 7.6 survived a refit that moved
+## them. Do not set `error: true`, and do not remove `output: false` in place of
+## fixing it, because the chunk's console noise is not the point of it.
+stopifnot(sprintf("%.3f", MOD_ADJ) == "0.416",
+          sprintf("%.1f", WIDEN$lo) == "2.3",
+          sprintf("%.1f", WIDEN$hi) == "5.9",
+          nrow(PROD_ROWS) == 16,
+          PROD_CLEAR == 0,
+          SAND_PROD_CLEAR == 0)
+```
+
+**Not one of the `r nrow(PROD_ROWS)` product-term intervals excludes zero.** Across four block sizes and `r LR_DF` product terms the count that clears is `r PROD_CLEAR`. The estimates have not moved, because the estimates are not what was wrong; the intervals have widened by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)` against the naive Poisson intervals of @tbl-ppproduct, and that factor is the whole of the difference between an interaction that looks overwhelming and one that is not there.
+
+That factor is quoted only over the `r WIDEN$n` of `r nrow(PPB_RAW)` term-by-block combinations that every one of the `r format(B_BOOT, big.mark = ",")` draws could estimate, and the reason is worth recording because it is the same kind of fault the paper is about. The four product cells rest on `r min(PROD_CELLS)` to `r max(PROD_CELLS)` quadrature points each, so a resample that misses the blocks holding one of them leaves that term unidentified. `r nrow(DEGEN)` combinations were affected, every one of them involving red attack or high severity, the worst losing `r B_BOOT - min(PPB_RAW$Usable)` draws of `r format(B_BOOT, big.mark = ",")`. The percentile for such a term is taken over whichever resamples happened to contain its cells, which are the resamples that overweight them, and that inflates the interval for a reason having nothing to do with spatial dependence. Left in, those combinations put the top of the widening range at `r sprintf("%.1f", max((PPB_RAW$Upper - PPB_RAW$Lower) / (2 * 1.96 * SE_PROD[PPB_RAW$Term])))` rather than `r sprintf("%.1f", WIDEN$hi)`. The count of usable draws is reported in @tbl-ppblocks for every cell so that this is visible rather than averaged away, and none of it changes the verdict: the affected intervals were already the widest, and every product term spans zero on the identified combinations alone.
+
+What survives is thin and worth stating precisely. The only terms among those shown whose intervals exclude zero at every block size are `r MAIN_WORDS`. Neither is a product term. The regeneration data support main effects for red-stage beetle attack and low burn severity, and support no statement at all about the two agents acting together.
+
+This is not a demonstration that the agents do not interact. It is a demonstration that these data cannot tell. Three plots totalling `r sprintf("%.1f", WIN_HA)` ha afford `r PP_OK_TXT` across the block sizes the residual range permits, and a product term asks the data to resolve a difference of differences across four severity-by-attack combinations on that footprint. The published likelihood answers the question confidently because it counts `r format(N_DATA, big.mark = ",")` seedlings as `r format(N_DATA, big.mark = ",")` independent pieces of evidence. They are not.
+
+# Discussion {#sec-discussion}
+
+Two questions were asked. Neither returned the answer it was posed to find, and the reasons are different in kind.
+
+## Principal findings {#sec-found}
+
+**Beetle and fire cannot be compared across the fire perimeter here, because the surfaces that would do it stop at the perimeter.** The annual classifications from which every local beetle surface descends carry nodata across almost all of the unburned forest, and carried it before any classification that used them was run. The consequence is not a caveat: a contingency table built across the boundary reports attack rising from a fraction of a per cent in unburned forest to a fifth at moderate severity, and measures the mask. The provincial Aerial Overview Survey, never clipped, finds attack outside the perimeter at a rate no lower than inside it.
+
+**Within the burn the severity gradient is real and narrow.** Three records that do not share a measurement pathway agree that attack peaks at moderate severity, and conditioning on lodgepole cover and elevation attenuates that peak by about two fifths without removing it. The fall at high severity is not supported in any specification, so the non-monotone shape is a claim these data carry at its peak and not at its fall.
+
+**The beetle by fire interaction is not supported.** Through the likelihood the parent study uses it is emphatic: a likelihood ratio statistic of `r sprintf("%.1f", LR_STAT)` on `r LR_DF` degrees of freedom and `r N_PROD_SIG` of `r LR_DF` product terms excluding zero. Under inference accounting for the clustering of the seedling pattern, every product term spans zero at every block size tried, and a cluster-robust sandwich clustered on the same blocks agrees. The estimates do not move; only the intervals do, by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`, and that factor is the whole distance between a confirmed interaction and none.
+
+## Inferential generality {#sec-general}
+
+The parent study reports that "areas of overlapping beetle mortality and high burn severity had significantly reduced lodgepole pine regeneration" and reads from that the suggestion that "the ecological consequences of beetle-fire interactions weaken as surface fuels decay over time". Its specification enters the two agents additively and tests no product between them. This paper adds one and finds that the data cannot support it either way, which means the additive specification was the right one to have fitted. The finding is therefore not a revision of the parent's ecology. It is a statement about what these data can be asked, and it locates the limit in the inference rather than in the landscape.
+
+The mechanism is worth stating plainly, because it is not specific to this landscape. A point process trend fitted by the Berman-Turner device is a weighted Poisson regression [@berman1992; @baddeley2000], and a Poisson likelihood treats every seedling as an independent piece of evidence about the covariates. The parent study devotes two figures and 999 Monte Carlo simulations to establishing that the seedling pattern is not independent: it reports significant clustering in every species examined, which is the expected result for conifer regeneration and not a defect [@murphy2026]. Those two facts sit in the same paper, and the second invalidates the standard errors the first is reported alongside. The residual correlogram of @fig-correlogram reaches the same verdict from inside the model, with dependence of `r PCORR$"Residual correlation"[1]` within 25 m.
+
+This is not an unusual error and it is not a careless one: clustered point patterns are routinely fitted this way and the software makes the Poisson path the path of least resistance. What makes it consequential is the size of the correction. A misspecified likelihood does not usually move a coefficient, it moves the interval around it, and the interval is what the claim rests on.
+
+**The caution this implies is not new, and the more careful practice already exists.** Modelling conifer regeneration after a large mixed-severity fire, @donato2009 excluded from their candidate set any model carrying more than five predictors or any interaction term, on the stated ground that the sample was too modest to support them, and reported relative importance among additive predictors instead. That is a judgement made in advance, on a study of comparable design and larger extent, and it reaches by prior reasoning the conclusion this paper reaches by measurement. The two routes are worth having both of. A restraint exercised on principle is cheap but unquantified, and leaves open how much room the data would in fact have allowed; a restraint arrived at by measurement puts a number on it, and that number is what transfers to the next study. The result reported here is therefore a quantification of a discipline this literature already exercises, not an objection to anyone who failed to.
+
+## Extent constraints {#sec-extent}
+
+Every result here is bounded by an extent chosen by a disturbance rather than by a design. The burn is about eight square kilometres and the regeneration plots total `r sprintf("%.1f", WIN_HA)` ha inside it: the ground on which beetle and fire co-occur at all, so not an arbitrary choice, but not a neutral one either.
+
+The consequences run the same way at both scales. Across the burn, lodgepole cover and elevation correlate at `r sprintf("%.2f", R_PL_EL)` and cannot be separated, where the companion study distinguishes them because 1,776 m of relief contains pine-poor ground at every height [@murphy2026refugia]. The fitted elevation optimum lands at `r round(PEAK)` m, far below the range the clip spans, so an analyst working only here would report attack rising with elevation without limit; the landscape-scale hump is not contradicted but out of view.
+
+The same collision governs the inference. A block bootstrap needs blocks large enough to contain the dependence and numerous enough to resample, and at both scales the extent caps the first before the second is comfortable: a 500 m block holds most of the dependence across the burn and affords `r SWEEP$Blocks[SWEEP$"Block side (m)" == BLOCK_M]`, where 1 km would afford eight, and inside the plots the residual range demands 75 to 100 m and the plots afford `r PP_OK_TXT`. This is the paper's subject matter arriving in its own methods: the extent that makes a compound-disturbance question askable is the extent that decides how firmly it can be answered.
+
+## Limitations {#sec-limits}
+
+Four of this study's five results are negative, and they are reported at the same length and in the same register as the one that is not. That is a deliberate choice rather than an apology. The same practice is visible in recent work on burn severity in this literature: @estabrook2025 report a severity model with acceptable discrimination and then state plainly that the map built from it performed poorly, with a residual spatial structure their own diagnostic detected. A negative applied result reported clearly is more useful than a positive one reported without its diagnostics, and the limitations below are set out in that spirit.
+
+**The interaction result is a null, and nulls have a floor.** Nothing here shows that beetle mortality and burn severity do not interact. It shows that `r format(N_DATA, big.mark = ",")` seedlings across `r sprintf("%.1f", WIN_HA)` ha, clustered as this pattern is, cannot resolve a difference of differences across four severity-by-attack combinations. A larger or better distributed sample could return a different answer, and this study offers no estimate of how much larger.
+
+**Question A is answered in a reduced form.** The within-burn gradient is not the question the compound-disturbance literature asks, which is whether beetle-killed stands burn differently from stands that were not attacked. Recovering that comparison means rebuilding the classification over the unclipped landscape, a reprocessing task that re-treads the parent study's published methods.
+
+**Two beetle surfaces disagree and only one is documented.** The corrected grey-stage union is preferred throughout: three times denser than the published red-stage surface, observed throughout the perimeter, and derived by a script that survives [@murphy2026greyfix]. The red-stage surface is a substitution for a layer absent from the parent repository and searched for without success.
+
+**The severity reference category is inherited, not chosen.** The published specification carries indicators for high and low severity only, so moderate severity is pooled with unburned and unclassified ground into a reference that is `r round(100 * REF_MOD / REF_N)` per cent moderate, the class carrying the most beetle attack. It is reproduced rather than repaired, because the object was to test the published model rather than replace it, but no fire coefficient here means quite what its label says.
+
+**The provincial survey is a coarse instrument**, its polygons sketched from an aircraft at a mapping scale far coarser than 30 m. It is used only as a check on whether ground outside the perimeter carries attack at all, which it can answer, and not as a measurement of severity, which it cannot.
+
+## Research priorities {#sec-next}
+
+Three things, in descending order of value against cost. The interaction test should be repeated where extent is not the binding constraint, which given the dependence range measured here means a distributed plot network rather than three contiguous plots. The published point process results should be reported with intervals that respect the clustering, which is inexpensive because the estimates are unchanged, and which on the evidence of @fig-interaction leaves two main effects standing. And recovering question A in its original form requires rebuilding the beetle classification over the unclipped landscape, which is worth doing only if the Landsat archive is being revisited anyway.
+
+# Conclusions {#sec-conclusions}
+
+Compound disturbance is described as an interaction far more often than it is tested as one, and the gap between the description and the test is where this study lives.
+
+Three findings, stated at the confidence the data support.
+
+1.  **A provenance result.** The beetle surfaces underlying the parent study stop at the fire perimeter, in the source files, before classification. Any comparison of beetle attack across that boundary measures the clip and not the forest. This is checkable in any study that inherits rasters it did not build, and it is cheap to check.
+
+2.  **A narrow ecological result.** Inside the burn, beetle attack is elevated at moderate severity relative to low, by `r sprintf("%.3f", MOD_ADJ)` in log-odds after conditioning on host and elevation, and it clears a spatial block bootstrap interval at every block size the extent supports. Attack at high severity is not distinguishable from attack at low severity in any specification.
+
+3.  **A negative result about the interaction, and a positive one about why.** The beetle by fire product term is decisive under the published Poisson likelihood and absent under inference that accounts for the clustering the parent study itself documents. The coefficients are identical either way. Only the intervals differ, and they differ by a factor of `r sprintf("%.1f", WIDEN$lo)` to `r sprintf("%.1f", WIDEN$hi)`.
+
+The title of this paper is a description of the parent study and, on this evidence, a recommendation. Beetle and fire were modelled additively there. Nothing found here supports modelling them any other way with data of this extent, and the apparent support for doing so came from a likelihood that counted clustered seedlings as independent observations. The honest summary of a compound-disturbance interaction in this landscape is that it has not been demonstrated, that these data cannot demonstrate it, and that the confidence with which it can appear to have been demonstrated is the finding most worth carrying elsewhere.
+
+# Author statements {#sec-statements}
+
+**Author contribution statement.** SM: conceptualisation, methodology, software, formal analysis, data curation, writing (original draft), writing (review and editing), visualisation.
+
+**Competing interests statement.** The author is also an author of Murphy et al. (2026), the study re-analysed here, and declares no other competing interests.
+
+**Funding statement.** The author declares no specific funding for this work.
+
+**Data availability statement.** The raster surfaces analysed here are held by the parent study [@murphy2026] and are not redistributed with this manuscript. The corrected grey-stage package of 2 June 2026 is documented in [@murphy2026greyfix]. The provincial Aerial Overview Survey is open under the Open Government Licence for British Columbia [@bcaos2026]. **The executable source document that produced every number, table and figure in this paper, together with the derived inputs needed to run it, will be deposited on acceptance and the identifier added here.**
+
+**Acknowledgements.** The author thanks the co-authors of the parent study for the discussion of spatial inference and remote-sensing limits in disturbance ecology out of which this analysis grew.
+
+# Declaration of generative AI and AI-assisted technologies in the manuscript preparation process
+
+During the preparation of this work, the author used Anthropic's Claude, through the Claude Code command-line interface, in order to draft and edit prose, to write and refactor the R code that produces the analysis, and to review the manuscript for consistency between its text and its computed results. After using this tool, the author reviewed and edited the content as needed and takes full responsibility for the content of the published article.
+
+Every scientific judgement in this manuscript is the author's: the questions asked, the specifications fitted, the inference procedures chosen, the interpretation of the results, and the decision about what the data do and do not support. No result is quoted from a tool's summary. Every number, table and figure is computed at render time from the source data by the executable document itself, and the assertions embedded in that document fail the render if any reported quantity ceases to match what the analysis produces.
+
+# References
+
+::: {#refs}
+:::
