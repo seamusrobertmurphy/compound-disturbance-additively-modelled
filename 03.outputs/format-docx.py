@@ -4,8 +4,11 @@
 Quarto's docx writer cannot express these requirements, so they are applied to
 the output file after render, never to the reference doc, which is a verified
 artifact. The rules, from the 10 August request: code blocks at 8 pt, left
-aligned; every data table 16.5 cm wide with cells left justified at 8 pt and
-the header row bold and centred.
+aligned, single spaced with no gap before or after so they sit as compact as
+the page allows; every data table 16.5 cm wide with cells left justified at
+8 pt and the header row bold and centred. The spacing override matters because
+the submission reference doc sets true double spacing in its defaults, which
+code blocks would otherwise inherit.
 
 The docx wraps each captioned table in a 1x1 outer table holding the caption
 and the inner data table; figures use the same wrapper with an image instead,
@@ -73,6 +76,16 @@ def set_par_alignment(p, alignment):
     p.alignment = alignment
 
 
+def set_par_compact(p):
+    pPr = p._p.get_or_add_pPr()
+    for el in pPr.findall(qn("w:spacing")):
+        pPr.remove(el)
+    fmt = p.paragraph_format
+    fmt.line_spacing = 1.0
+    fmt.space_before = Pt(0)
+    fmt.space_after = Pt(0)
+
+
 def format_data_table(table):
     set_tbl_width(table._tbl, TABLE_W_DXA - 2 * CELL_MARGIN_DXA)
     for i, row in enumerate(table.rows):
@@ -102,12 +115,14 @@ def main(path):
     for p in doc.paragraphs:
         if p.style.name == "Source Code":
             set_par_alignment(p, WD_ALIGN_PARAGRAPH.LEFT)
+            set_par_compact(p)
             for run in p.runs:
                 run.font.size = FONT_SIZE
             code_pars += 1
     doc.save(path)
     print(f"{path}: {data_tables} data tables set to 16.5 cm, 8 pt, "
-          f"left cells, bold centred header; {code_pars} code blocks at 8 pt left")
+          f"left cells, bold centred header; {code_pars} code blocks at "
+          f"8 pt left, single spaced")
 
 
 if __name__ == "__main__":
