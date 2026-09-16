@@ -1,7 +1,7 @@
 # Highlights
 
-- Beetle rasters were clipped to the fire perimeter before any classification ran
-- An unclipped provincial survey finds equal attack outside the burn perimeter
-- Beetle attack peaks at moderate burn severity after conditioning on host cover
-- A beetle by fire product term is decisive under a naive Poisson likelihood
-- Clustering-aware intervals are several times wider and exclude no product term
+- Prior beetle attack did not change the probability of high-severity burning
+- The count of attack years showed no hump-shaped effect on high burn severity
+- Beetle by fire product terms were decisive under the published Poisson likelihood
+- Clustering-aware intervals were 2.3 to 5.9 times wider and excluded no product term
+- Both nulls agree with field studies of lodgepole pine at short intervals
