@@ -42,7 +42,7 @@ date: today
 format:
   docx:
     prefer-html: true
-    reference-doc: ../04.references/style-elsevier-submission.docx
+    reference-doc: ../04.references/style-formal.docx
     highlight-style: pygments
   html:
     page-layout: full
